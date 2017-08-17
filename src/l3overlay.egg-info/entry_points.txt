@@ -1,4 +1,0 @@
-[console_scripts]
-l3overlay-birdc = l3overlay.l3overlay_birdc:main
-l3overlayd = l3overlay.l3overlayd.main:main
-
