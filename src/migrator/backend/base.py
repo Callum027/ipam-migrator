@@ -32,6 +32,21 @@ class BaseBackend(meta=abc.ABCMeta):
     '''
 
 
+    def subnets_read(self):
+        '''
+        Stub for prefixes_read.
+        '''
+
+        return self.prefixes_read()
+
+
+    def prefixes_read(self):
+        '''
+        '''
+
+        raise NotImplementedError()
+
+
     def ip_address_get():
         '''
         '''
