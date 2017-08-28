@@ -76,11 +76,13 @@ class PhpIPAM(BaseBackend):
             )
 
 
-    def api_request(self, request, data=None):
+    def api_request(self, *args, data=None):
         '''
         '''
 
         self.api_authenticate()
+
+        request = "/".join(args)
 
         return requests.get(
             "{}/{}".format(self.api_endpoint, request),
@@ -101,51 +103,137 @@ class PhpIPAM(BaseBackend):
         return res["data"]
 
 
-    def prefixes_read(self):
-        '''
-        https://phpipam.net/api/api_documentation/
-        3.2 Subnets controller
-        '''
-
-        req = self.api_request(
-            "subnets/search/{}".format(self.api_url, self.api_key),
-            data={
-                "mac": self.mac,
-                "hostname": self.hostname,
-            },
-        )
-
-
     def vlans_read(self):
         '''
         https://phpipam.net/api/api_documentation/
-        3.2 VLAN controller
+        3.5 VLAN controller
         '''
 
-        vlans = []
+        vlans = {}
 
         req = self.api_request("vlan")
         res = req.json()
 
         for vlan_data in res["data"]:
-            vlans.append({
-                # id - phpIPAM ID - Vlan identifier, identifies which vlan to work on.
-                # domainId - L2 domain identifier (default 1 – default domain)
-                # name - VLAN name
-                # number - VLAN ID (number)
-                # description - VLAN description
-                # editDate - Date and time of last update
-                "name": vlan_data["name"],
-                "description": vlan_data["description"],
+            vlans[vlan_data["id"]] = VLAN(
+                vlan_data["id"], # vlan_id
+                vlan_data["number"], # vid
+                name=vlan_data["name"],
+                description=vlan_data["description"],
+                # Unused: domainId - L2 domain identifier (default 1 – default domain)
+            ))
 
-                "vlan_id": vlan_data["number"],
-
-            })
-
-            vlans.append(vlan)
+        return vlans
 
 
-    def read(self,
+    def prefixes_read_from_vlans(self, vlans):
+        '''
+        https://phpipam.net/api/api_documentation/
+        3.2 Subnets controller
+        '''
+
+        prefixes = {}
+
+        for vlan_id in vlans.keys():
+            req = self.api_request("devices", vlan_id)
+            res = req.json()
+
+            for subnet_data in res["data"]:
+                prefixes[subnet_data["id"]] = Prefix(
+                    subnet_data["id"], # prefix_id
+                    "{}/{}".format(subnet_data["subnet"], subnet_data["mask"]), # prefix
+                    name=subnet_data["name"],
+                    description=subnet_data["description"],
+                    vlan_id=subnet_data["vlanId"],
+                    vrf_id=subnet_data["vrfId"],
+                    # Unused:
+                    # sectionId - Section identifier (mandatory on add method).
+                    # linked_subnet - Linked IPv6 subnet
+                    # masterSubnetId - Master subnet id for nested subnet (default: 0)
+                    # nameserverId - Id of nameserver to attach to subnet (default: 0)
+                    # showName - Controls weather subnet is displayed as IP address or
+                    #            Name in subnets menu (default: 0)
+                    # permissions - Group permissions for subnet.
+                    # DNSrecursive - Controls if PTR records should be created for subnet
+                    #                (default: 0)
+                    # DNSrecords - Controls weather hostname DNS records are displayed (default: 0)
+                    # allowRequests - Controls if IP requests are allowed for subnet (default: 0)
+                    # scanAgent - Controls which scanagent to use for subnet (default: 1)
+                    # pingSubnet - Controls if subnet should be included in status checks
+                    #            - (default: 0)
+                    # discoverSubnet - Controls if new hosts should be discovered for new host
+                    #                  scans (default: 0)
+                    # isFolder - Controls if we are adding subnet or folder (default: 0)
+                    # isFull - Marks subnet as used (default: 0)
+                    # state - Assignes state (tag) to subnet (default: 1 – Used)
+                    # threshold - Subnet threshold
+                    # location - Location index
+                    # editDate - Date and time of last update
+                ))
+
+        return prefixes
+
+
+    def addresses_read_from_prefixes(self, prefixes):
+        '''
+        https://phpipam.net/api/api_documentation/
+        3.4 Addresses controller
+        '''
+
+        addresses = {}
+
+        for prefix_id in prefixes.keys():
+            req = self.api_request("subnets", prefix_id, "addresses")
+            res = req.json()
+
+            for address_data in res["data"]:
+                addresses[address_data["id"]] = Address(
+                    address_data["id"], # address_id
+                    address_data["ip"], # address
+                    description=addresses_data["description"],
+                    # Unused:
+                    # subnetId - Id of subnet address belongs to
+                    # is_gateway - Defines if address is presented as gateway
+                    # hostname - Address hostname
+                    # mac - Mac address
+                    # owner - Address owner
+                    # tag - IP tag (online, offline, ...)
+                    # PTRignore - Controls if PTR should not be created
+                    # PTR - Id of PowerDNS PTR record
+                    # deviceId - Id of device address belongs to
+                    # port - Port
+                    # note - Note
+                    # lastSeen - Date and time address was last seen with ping.
+                    # excludePing - Exclude this address from status update scans (ping)
+                    # editDate - Date and time of last update
+                ))
+
+        return addresses
+
+
+    def vrfs_read(self):
+        '''
+        Not implemented.
+
+        https://phpipam.net/api/api_documentation/
+        3.7 VRF controller
+        '''
+
+        return tuple()
+
+
+    def devices_read(self):
+        '''
+        Not implemented.
+
+        https://phpipam.net/api/api_documentation/
+        3.8 Devices controller
+        '''
+
+        return tuple()
+
+
+    def database_read(self,
              read_sections=False,
              read_vlans=False,
              read_vrfs=False,
@@ -162,4 +250,13 @@ class PhpIPAM(BaseBackend):
 
         if read_addresses:
 
-        return database
+        return Database(
+            tuple(), # roles
+            tuple(), # services
+            ip_addresses,
+            prefixes, # phpIPAM: Subnets
+            tuple(), # aggregates
+            vlans,
+            vlan_groups, # phpIPAM: L2 domains
+            vrfs,
+        )

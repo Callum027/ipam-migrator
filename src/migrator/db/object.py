@@ -1,6 +1,6 @@
 #
 # Migrator tool for phpIPAM-NetBox
-# migrator/db/ip/subnet.py - Internet Protocol (IP) subnet prefixes
+# migrator/db/object.py - Internet Protocol (IP) subnet prefixes
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -19,126 +19,83 @@
 
 
 '''
-Internet Protocol (IP) subnet prefixes.
+Database object base class.
 '''
 
 
-import ipaddress
-
-
-# Family 	IPv4
-# VRF 	Global
-# Tenant 	None
-# Aggregate 	None
-# Site 	None
-# VLAN 	None
-# Status 	Active
-# Role 	None
-# Is a pool     False
-# Description 	N/A
-# Utilization 	2 IP addresses (0%)
-
-
-class Prefix(object):
+class Object(object):
     '''
-    Database type for Internet Protocol (IP) subnet prefixes.
+    Database object base class.
     '''
 
 
-    def __init__(self, prefix,
-                 name=None, description=None, role=None, status=None,
-                 site=None, tenant=None, vlan=None, vrf=None,
-                 is_a_pool=False, addresses=None):
+    def __init__(self, object_id, name, description):
         '''
-        VLAN object constructor.
+        Database object constructor.
         '''
 
-        self.prefix = ipaddress.ip_network(prefix)
-        self.family = "IPv6" if isinstance(self.prefix, ipaddress.IPv6Network) else "IPv4"
-
+        self.object_id = object_id
         self.name = name
         self.description = description
-        self.role = role
-        self.status = status
-
-        self.site = site
-        self.tenant = tenant
-        self.vlan = vlan
-        self.vrf = vrf
-
-        self.is_a_pool = is_a_pool
-        self.addresses = list(addresses)
 
 
-    def func_hash(self, key):
+    def __hash__(self):
         '''
-        Hash function for the Prefix object,
-        based around the hash of the internal IPNetwork object.
+        Hash function for VLAN object, based around the VLAN ID.
         '''
 
-        return self.__getattr__(key).__hash__()
+        return self.object_id
 
 
-    def compare(self, other, key, comparator):
+    def __lt__(self, other):
         '''
-        Less-than function for the Prefix object,
-        implementing logical ordering based around the internal IPNetwork object.
+        Less-than function for the object,
+        implementing logical ordering based around the object ID.
         '''
 
-        self_value = self.__getattr__(key)
-        other_value = other.__getattr__(key)
-
-        if not self.site.name == other.site.name:
-            return self.site.name < other.site.name
-
-        if self_value:
-            if other_value is None:
-                return 1
-        elif not self_value:
-
-        return self.prefix < other.prefix
+        return self.object_id < other.object_id
 
 
     def __le__(self, other):
         '''
-        Less-than-or-equal-to function for the Prefix object,
-        implementing logical ordering based around the internal IPNetwork object.
+        Less-than-or-equal-to function for the object,
+        implementing logical ordering based around the object ID.
         '''
 
-        return self.prefix <= other.prefix
+        return self.object_id <= other.object_id
 
 
     def __eq__(self, other):
         '''
-        Equal function for the Prefix object,
-        implementing logical ordering based around the internal IPNetwork object.
+        Equal function for the object,
+        implementing logical ordering based around the object ID.
         '''
 
-        return self.prefix == other.prefix
+        return self.object_id == other.object_id
 
 
     def __ne__(self, other):
         '''
-        Not-equal function for the Prefix object,
-        implementing logical ordering based around the internal IPNetwork object.
+        Not-equal function for the object,
+        implementing logical ordering based around the object ID.
         '''
 
-        return self.prefix != other.prefix
+        return self.object_id != other.object_id
 
 
     def __gt__(self, other):
         '''
-        Greater-than function for the Prefix object,
-        implementing logical ordering based around the internal IPNetwork object.
+        Greater-than function for the object,
+        implementing logical ordering based around the object ID.
         '''
 
-        return self.prefix > other.prefix
+        return self.object_id > other.object_id
 
 
     def __ge__(self, other):
         '''
-        Greater-than-or-equal-to function for the Prefix object,
-        implementing logical ordering based around the internal IPNetwork object.
+        Greater-than-or-equal-to function for the object,
+        implementing logical ordering based around the object ID.
         '''
 
-        return self.prefix >= other.prefix
+        return self.object_id >= other.object_id

@@ -1,6 +1,6 @@
 #
 # Migrator tool for phpIPAM-NetBox
-# migrator/db/ip/subnet.py - Internet Protocol (IP) subnet prefixes
+# migrator/db/ip/prefix.py - Internet Protocol (IP) subnet prefixes
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -25,6 +25,8 @@ Internet Protocol (IP) subnet prefixes.
 
 import ipaddress
 
+from migrator.db.object import Object
+
 
 # Family 	IPv4
 # VRF 	Global
@@ -39,22 +41,26 @@ import ipaddress
 # Utilization 	2 IP addresses (0%)
 
 
-class Prefix(object):
+class Prefix(Object):
     '''
     Database type for Internet Protocol (IP) subnet prefixes.
     '''
 
 
-    def __init__(self, prefix,
-                 name=None, description=None, role=None, status=None,
-                 site=None, tenant=None, vlan=None, vrf=None,
-                 is_a_pool=False, addresses=None):
+    def __init__(self,
+                 prefix_id, prefix,
+                 is_a_pool=False, addresses=None,
+                 name=None, description=None,
+                 role_id=None, status_id=None,
+                 vlan_id=None, vrf_id=None, site=None, tenant_id=None):
         '''
         VLAN object constructor.
         '''
 
+        super.__init__(prefix_id)
+
         self.prefix = ipaddress.ip_network(prefix)
-        self.family = "IPv6" if isinstance(self.prefix, ipaddress.IPv6Network) else "IPv4"
+        self.family = 6 if isinstance(self.prefix, ipaddress.IPv6Network) else 4
 
         self.name = name
         self.description = description

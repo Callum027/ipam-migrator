@@ -23,15 +23,18 @@ Database type for VLANs.
 '''
 
 
-class VLAN(object):
+from migrator.db.object import Object
+
+
+class VLAN(Object):
     '''
     Database type for VLANs.
     '''
 
 
     def __init__(self,
-                 vlan_id, status=None,
-                 name=None, description=None):
+                 vlan_id, vid, name=None, description=None,
+                 status_id=None, group_id=None, tenant_id=None, site_id=None):
         '''
         VLAN object constructor.
         '''
