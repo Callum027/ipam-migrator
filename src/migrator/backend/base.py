@@ -32,30 +32,25 @@ class BaseBackend(meta=abc.ABCMeta):
     '''
 
 
-    def subnets_read(self):
-        '''
-        Stub for prefixes_read.
-        '''
-
-        return self.prefixes_read()
-
-
-    def prefixes_read(self):
-        '''
-        '''
-
-        raise NotImplementedError()
-
-
-    def ip_address_get():
+    @abc.abstractmethod
+    def database_read(self,
+                      read_roles=True,
+                      read_services=True,
+                      read_ip_addresses=True,
+                      read_prefixes=True,
+                      read_aggregates=True,
+                      read_vlans=True,
+                      read_vlan_groups=True,
+                      read_vrfs=True):
         '''
         '''
 
-        raise NotImplementedError()
+        pass
 
 
-    def ip_subnet_get():
+    @abc.abstractmethod
+    def database_write(self, database):
         '''
         '''
 
-        raise NotImplementedError()
+        pass

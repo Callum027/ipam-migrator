@@ -28,7 +28,7 @@ import ipaddress
 from migrator.db.object import Object
 
 
-class Address(Object):
+class IPAddress(Object):
     '''
     Database type for Internet Protocol (IP) subnet prefixes.
     '''

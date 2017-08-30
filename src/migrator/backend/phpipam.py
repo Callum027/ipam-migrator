@@ -48,6 +48,76 @@ class PhpIPAM(BaseBackend):
         self.token_expires = None
 
 
+    #
+    ##
+    #
+
+
+    def database_read(self,
+                      read_roles=True,
+                      read_services=True,
+                      read_ip_addresses=True,
+                      read_prefixes=True,
+                      read_aggregates=True,
+                      read_vlans=True,
+                      read_vlan_groups=True,
+                      read_vrfs=True):
+        '''
+        '''
+
+        # Reading VLANs are required for reading prefixes or IP addresses,
+        # even if the VLANs themselves are not requested in the database.
+        if read_vlans or read_prefixes or read_ip_addresses:
+            vlans = self.vlans_read()
+        else:
+            vlans = tuple()
+
+        # Reading prefixes are required for reading IP addresses,
+        # even if the VLANs themselves are not requested in the database.
+        if read_prefixes or read_ip_addresses:
+            prefixes = self.prefixes_read_from_vlans(vlans)
+        else:
+            prefixes = tuple()
+
+        if read_ip_addresses:
+            ip_addresses = self.ip_addresses_read_from_prefixes(prefixes)
+        else:
+            ip_addresses = tuple()
+
+        if read_vlan_groups:
+            vlan_groups = self.vlan_groups_read()
+        else:
+            vlan_groups = tuple()
+
+        if read_vrfs:
+            vrfs = self.vrfs_read()
+        else:
+            vrfs = tuple()
+
+        return Database(
+            tuple(), # roles
+            tuple(), # services
+            ip_addresses,
+            prefixes if read_prefixes else tuple(), # phpIPAM: Subnets
+            tuple(), # aggregates
+            vlans if read_vlans else tuple(),
+            vlan_groups, # phpIPAM: L2 domains
+            vrfs,
+        )
+
+
+    def database_write(self, database):
+        '''
+        '''
+
+        
+
+
+    #
+    ##
+    #
+
+
     def api_authenticate(self):
         '''
         https://phpipam.net/api/api_documentation/
@@ -76,7 +146,7 @@ class PhpIPAM(BaseBackend):
             )
 
 
-    def api_request(self, *args, data=None):
+    def api_read(self, *args, data=None):
         '''
         '''
 
@@ -91,13 +161,18 @@ class PhpIPAM(BaseBackend):
         )
 
 
+    #
+    ##
+    #
+
+
     def sections_read(self):
         '''
         https://phpipam.net/api/api_documentation/
         3.1 Sections controller
         '''
 
-        req = self.api_request("sections")
+        req = self.api_read("sections")
         res = req.json()
 
         return res["data"]
@@ -111,7 +186,7 @@ class PhpIPAM(BaseBackend):
 
         vlans = {}
 
-        req = self.api_request("vlan")
+        req = self.api_read("vlan")
         res = req.json()
 
         for vlan_data in res["data"]:
@@ -121,7 +196,7 @@ class PhpIPAM(BaseBackend):
                 name=vlan_data["name"],
                 description=vlan_data["description"],
                 # Unused: domainId - L2 domain identifier (default 1 – default domain)
-            ))
+            )
 
         return vlans
 
@@ -135,7 +210,7 @@ class PhpIPAM(BaseBackend):
         prefixes = {}
 
         for vlan_id in vlans.keys():
-            req = self.api_request("devices", vlan_id)
+            req = self.api_read("devices", vlan_id)
             res = req.json()
 
             for subnet_data in res["data"]:
@@ -169,25 +244,25 @@ class PhpIPAM(BaseBackend):
                     # threshold - Subnet threshold
                     # location - Location index
                     # editDate - Date and time of last update
-                ))
+                )
 
         return prefixes
 
 
-    def addresses_read_from_prefixes(self, prefixes):
+    def ip_addresses_read_from_prefixes(self, prefixes):
         '''
         https://phpipam.net/api/api_documentation/
         3.4 Addresses controller
         '''
 
-        addresses = {}
+        ip_addresses = {}
 
         for prefix_id in prefixes.keys():
-            req = self.api_request("subnets", prefix_id, "addresses")
+            req = self.api_read("subnets", prefix_id, "addresses")
             res = req.json()
 
             for address_data in res["data"]:
-                addresses[address_data["id"]] = Address(
+                ip_addresses[address_data["id"]] = Address(
                     address_data["id"], # address_id
                     address_data["ip"], # address
                     description=addresses_data["description"],
@@ -206,9 +281,9 @@ class PhpIPAM(BaseBackend):
                     # lastSeen - Date and time address was last seen with ping.
                     # excludePing - Exclude this address from status update scans (ping)
                     # editDate - Date and time of last update
-                ))
+                )
 
-        return addresses
+        return ip_addresses
 
 
     def vrfs_read(self):
@@ -233,30 +308,13 @@ class PhpIPAM(BaseBackend):
         return tuple()
 
 
-    def database_read(self,
-             read_sections=False,
-             read_vlans=False,
-             read_vrfs=False,
-             read_prefixes=False,
-             read_devices=False,
-             read_addresses=False):
+    #
+    ##
+    #
+
+
+    def sections_write(self):
         '''
         '''
 
-        database =
-
-        if read_prefixes:
-            
-
-        if read_addresses:
-
-        return Database(
-            tuple(), # roles
-            tuple(), # services
-            ip_addresses,
-            prefixes, # phpIPAM: Subnets
-            tuple(), # aggregates
-            vlans,
-            vlan_groups, # phpIPAM: L2 domains
-            vrfs,
-        )
+        raise NotImplementedError()
