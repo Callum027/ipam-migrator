@@ -33,76 +33,15 @@ class VLAN(Object):
 
 
     def __init__(self,
-                 vlan_id, vid, name=None, description=None,
+                 vlan_id,
+                 vid,
+                 name=None, description=None,
                  status_id=None, group_id=None, tenant_id=None, site_id=None):
         '''
         VLAN object constructor.
         '''
 
-        self.vlan_id = vlan_id
-        self.status = status
+        self.__init__(vlan_id, name, description)
 
-        self.name = name
-        self.description = description
-
-
-    def __hash__(self):
-        '''
-        Hash function for VLAN object, based around the VLAN ID.
-        '''
-
-        return self.vlan_id
-
-
-    def __lt__(self, other):
-        '''
-        Less-than function for VLAN object,
-        implementing logical ordering based around the VLAN ID.
-        '''
-
-        return self.vlan_id < other.vlan_id
-
-
-    def __le__(self, other):
-        '''
-        Less-than-or-equal-to function for VLAN object,
-        implementing logical ordering based around the VLAN ID.
-        '''
-
-        return self.vlan_id <= other.vlan_id
-
-
-    def __eq__(self, other):
-        '''
-        Equal function for VLAN object,
-        implementing logical ordering based around the VLAN ID.
-        '''
-
-        return self.vlan_id == other.vlan_id
-
-
-    def __ne__(self, other):
-        '''
-        Not-equal function for VLAN object,
-        implementing logical ordering based around the VLAN ID.
-        '''
-
-        return self.vlan_id != other.vlan_id
-
-
-    def __gt__(self, other):
-        '''
-        Greater-than function for VLAN object,
-        implementing logical ordering based around the VLAN ID.
-        '''
-
-        return self.vlan_id > other.vlan_id
-
-
-    def __ge__(self, other):
-        '''
-        Greater-than-or-equal-to function for VLAN object,
-        implementing logical ordering based around the VLAN ID.
-        '''
-
-        return self.vlan_id >= other.vlan_id
+        self.vid = vid
+        self.status_id = status_id

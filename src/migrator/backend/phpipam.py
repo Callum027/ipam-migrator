@@ -189,12 +189,12 @@ class PhpIPAM(BaseBackend):
         req = self.api_read("vlan")
         res = req.json()
 
-        for vlan_data in res["data"]:
-            vlans[vlan_data["id"]] = VLAN(
-                vlan_data["id"], # vlan_id
-                vlan_data["number"], # vid
-                name=vlan_data["name"],
-                description=vlan_data["description"],
+        for data in res["data"]:
+            vlans[data["id"]] = VLAN(
+                data["id"], # vlan_id
+                data["number"], # vid
+                name=data["name"],
+                description=data["description"],
                 # Unused: domainId - L2 domain identifier (default 1 – default domain)
             )
 
@@ -213,14 +213,14 @@ class PhpIPAM(BaseBackend):
             req = self.api_read("devices", vlan_id)
             res = req.json()
 
-            for subnet_data in res["data"]:
-                prefixes[subnet_data["id"]] = Prefix(
-                    subnet_data["id"], # prefix_id
-                    "{}/{}".format(subnet_data["subnet"], subnet_data["mask"]), # prefix
-                    name=subnet_data["name"],
-                    description=subnet_data["description"],
-                    vlan_id=subnet_data["vlanId"],
-                    vrf_id=subnet_data["vrfId"],
+            for data in res["data"]:
+                prefixes[data["id"]] = Prefix(
+                    data["id"], # prefix_id
+                    "{}/{}".format(data["subnet"], data["mask"]), # prefix
+                    name=data["name"],
+                    description=data["description"],
+                    vlan_id=data["vlanId"],
+                    vrf_id=data["vrfId"],
                     # Unused:
                     # sectionId - Section identifier (mandatory on add method).
                     # linked_subnet - Linked IPv6 subnet
@@ -261,11 +261,11 @@ class PhpIPAM(BaseBackend):
             req = self.api_read("subnets", prefix_id, "addresses")
             res = req.json()
 
-            for address_data in res["data"]:
-                ip_addresses[address_data["id"]] = Address(
-                    address_data["id"], # address_id
-                    address_data["ip"], # address
-                    description=addresses_data["description"],
+            for data in res["data"]:
+                ip_addresses[data["id"]] = Address(
+                    data["id"], # address_id
+                    data["ip"], # address
+                    description=data["description"],
                     # Unused:
                     # subnetId - Id of subnet address belongs to
                     # is_gateway - Defines if address is presented as gateway

@@ -28,19 +28,6 @@ import ipaddress
 from migrator.db.object import Object
 
 
-# Family 	IPv4
-# VRF 	Global
-# Tenant 	None
-# Aggregate 	None
-# Site 	None
-# VLAN 	None
-# Status 	Active
-# Role 	None
-# Is a pool     False
-# Description 	N/A
-# Utilization 	2 IP addresses (0%)
-
-
 class Prefix(Object):
     '''
     Database type for Internet Protocol (IP) subnet prefixes.
@@ -48,146 +35,27 @@ class Prefix(Object):
 
 
     def __init__(self,
-                 prefix_id, prefix,
-                 is_a_pool=False, addresses=None,
+                 prefix_id,
+                 prefix,
+                 is_pool=False,
                  name=None, description=None,
                  role_id=None, status_id=None,
-                 vlan_id=None, vrf_id=None, site=None, tenant_id=None):
+                 vlan_id=None, vrf_id=None, tenant_id=None, site_id=None):
         '''
         VLAN object constructor.
         '''
 
-        super.__init__(prefix_id)
+        super.__init__(prefix_id, name, description)
 
         self.prefix = ipaddress.ip_network(prefix)
         self.family = 6 if isinstance(self.prefix, ipaddress.IPv6Network) else 4
 
-        self.name = name
-        self.description = description
-        self.role = role
-        self.status = status
+        self.is_pool = is_pool
 
-        self.site = site
-        self.tenant = tenant
-        self.vlan = vlan
-        self.vrf = vrf
+        self.role_id = role_id
+        self.status_id = status_id
 
-        self.is_a_pool = is_a_pool
-        self.addresses = list(addresses)
-
-
-    def __hash__(self):
-        '''
-        Hash function for the Prefix object,
-        based around the hash of the internal IPNetwork object.
-        '''
-
-        return self.prefix.__hash__()
-
-
-    def __lt__(self, other):
-        '''
-        Less-than function for the Prefix object,
-        implementing logical ordering based around the internal IPNetwork object.
-        '''
-
-        if self.site != other.site:
-            return self.site < other.site
-        if self.tentant != other.tenant:
-            return self.tenant < other.tenant
-        if self.vlan != other.vlan:
-            return self.vlan < other.vlan
-        if self.vrf != other.vrf:
-            return self.vrf < other.vrf
-
-        return self.prefix < other.prefix
-
-
-    def __le__(self, other):
-        '''
-        Less-than-or-equal-to function for the Prefix object,
-        implementing logical ordering based around the internal IPNetwork object.
-        '''
-
-        if self.site != other.site:
-            return self.site < other.site
-        if self.tentant != other.tenant:
-            return self.tenant < other.tenant
-        if self.vlan != other.vlan:
-            return self.vlan < other.vlan
-        if self.vrf != other.vrf:
-            return self.vrf < other.vrf
-
-        return self.prefix < other.prefix
-
-
-    def __eq__(self, other):
-        '''
-        Equal function for the Prefix object,
-        implementing logical ordering based around the internal IPNetwork object.
-        '''
-
-        if self.site != other.site:
-            return self.site < other.site
-        if self.tentant != other.tenant:
-            return self.tenant < other.tenant
-        if self.vlan != other.vlan:
-            return self.vlan < other.vlan
-        if self.vrf != other.vrf:
-            return self.vrf < other.vrf
-
-        return self.prefix < other.prefix
-
-
-    def __ne__(self, other):
-        '''
-        Not-equal function for the Prefix object,
-        implementing logical ordering based around the internal IPNetwork object.
-        '''
-
-        if self.site != other.site:
-            return self.site < other.site
-        if self.tentant != other.tenant:
-            return self.tenant < other.tenant
-        if self.vlan != other.vlan:
-            return self.vlan < other.vlan
-        if self.vrf != other.vrf:
-            return self.vrf < other.vrf
-
-        return self.prefix < other.prefix
-
-
-    def __gt__(self, other):
-        '''
-        Greater-than function for the Prefix object,
-        implementing logical ordering based around the internal IPNetwork object.
-        '''
-
-        if self.site != other.site:
-            return self.site < other.site
-        if self.tentant != other.tenant:
-            return self.tenant < other.tenant
-        if self.vlan != other.vlan:
-            return self.vlan < other.vlan
-        if self.vrf != other.vrf:
-            return self.vrf < other.vrf
-
-        return self.prefix < other.prefix
-
-
-    def __ge__(self, other):
-        '''
-        Greater-than-or-equal-to function for the Prefix object,
-        implementing logical ordering based around the internal IPNetwork object.
-        '''
-
-        if self.site != other.site:
-            return self.site < other.site
-        if self.tentant != other.tenant:
-            return self.tenant < other.tenant
-        if self.vlan != other.vlan:
-            return self.vlan < other.vlan
-        if self.vrf != other.vrf:
-            return self.vrf < other.vrf
-
-        return self.prefix < other.prefix
+        self.vlan_id = vlan_id
+        self.vrf_id = vrf_id
+        self.tenant_id = tenant_id
+        self.site_id = site_id

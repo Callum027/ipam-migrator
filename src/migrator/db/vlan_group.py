@@ -1,6 +1,6 @@
 #
 # Migrator tool for phpIPAM-NetBox
-# migrator/db/vrf.py - database type for VRFs
+# migrator/db/vlan_group.py - database type for VLAN groups
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -26,26 +26,22 @@ Database type for VLAN groups.
 from migrator.db.object import Object
 
 
-class VRF(Object):
+class VLANGroup(Object):
     '''
-    Database type for VRFs.
+    Database type for VLAN groups.
     '''
 
 
     def __init__(self,
-                 vrf_id,
-                 route_distinguisher,
-                 enforce_unique=False,
+                 vlan_group_id,
+                 slug=None,
                  name=None,
-                 description=None,
-                 tenant_id=None):
+                 status_id=None):
         '''
         VLAN group object constructor.
         '''
 
-        self.__init__(vrf_id, name, description)
+        self.__init__(vlan_group_id, name, None)
 
-        self.route_distinguisher = route_distinguisher
-        self.enforce_unique = enforce_unique
-
-        self.tenant_id = tenant_id
+        self.slug = slug if slug else name.lower().replace(" ", "-").replace("\t", "-")
+        self.status_id = status_id
