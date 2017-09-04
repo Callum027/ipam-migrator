@@ -35,7 +35,6 @@ class Database(object):
 
     def __init__(self,
                  roles,
-                 services,
                  ip_addresses, prefixes, aggregates,
                  vlans, vlan_groups,
                  vrfs):
@@ -44,8 +43,6 @@ class Database(object):
         '''
 
         self.roles = tuple(copy.deepcopy(roles))
-
-        self.services = tuple(copy.deepcopy(services))
 
         self.ip_addresses = tuple(copy.deepcopy(ip_addresses))
         self.prefixes = tuple(copy.deepcopy(prefixes))

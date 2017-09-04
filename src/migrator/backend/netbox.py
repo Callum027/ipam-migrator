@@ -28,7 +28,6 @@ import datetime
 import requests
 
 from migrator.db.role import Role
-from migrator.db.service import Service
 from migrator.db.ip_address import IPAddress
 from migrator.db.prefix import Prefix
 from migrator.db.aggregate import Aggregate
@@ -93,7 +92,6 @@ class NetBox(BaseBackend):
 
     def database_read(self,
                       read_roles=True,
-                      read_services=True,
                       read_ip_addresses=True,
                       read_prefixes=True,
                       read_aggregates=True,
@@ -134,7 +132,6 @@ class NetBox(BaseBackend):
 
         return Database(
             tuple(), # roles
-            tuple(), # services
             ip_addresses,
             prefixes if read_prefixes else tuple(), # phpIPAM: Subnets
             tuple(), # aggregates
@@ -148,7 +145,8 @@ class NetBox(BaseBackend):
         '''
         '''
 
-        pass
+        roles_old = database.roles
+        roles_new, roles_old_to_new = self.roles_write(roles_old)
 
 
     #
@@ -191,136 +189,50 @@ class NetBox(BaseBackend):
         '''
         '''
 
-        roles = {}
-
         req = self.api_read("ipam", "roles")
         res = req.json()
 
-        for data in res["data"]:
-            roles[data["id"]] = Role(
-                data["id"], # role_id
-                data["weight"], # weight
-                slug=data["slug"],
-                name=data["name"],
-            )
-
-        return roles
-
-
-    def services_read(self):
-        '''
-        '''
-
-        pass
+        return {data["id"], self.role_get(data) for data in res["results"]}
 
 
     def ip_addresses_read(self):
         '''
         '''
 
-        ip_addresses = {}
-
         req = self.api_read("ipam", "ip-addresses")
         res = req.json()
 
-        for data in res["results"]:
-            ip_addresses[data["id"]] = IPAddress(
-                data["id"], # ip_address_id
-                data["address"], # address
-                description=data["description"],
-                custom_fields=data["custom_fields"],
-                status_id=data["status"]["value"] if "status" in data else None,
-                nat_inside_id=data["nat_inside"]["id"] if "nat_inside" in data else None,
-                nat_outside_id=data["nat_outside"]["id"] if "nat_outside" in data else None,
-                interface_id=data["interface"]["id"] if "interface" in data else None,
-                vrf_id=data["vrf"]["id"] if "vrf" indata else None,
-                tenant_id=data["tenant"]["id"] if "tenant" in data else None,
-            )
-
-        return ip_addresses
+        return {data["id"], self.ip_address_get(data) for data in res["results"]}
 
 
     def prefixes_read(self):
         '''
         '''
 
-        prefixes = {}
-
         req = self.api_read("ipam", "prefixes")
         res = req.json()
 
-        for data in res["results"]:
-            prefixes[data["id"]] = Prefix(
-                data["id"], # prefix_id
-
-                data["prefix"], # prefix
-
-                is_pool=data["is_pool"],
-                custom_fields=data["custom_fields"],
-
-                name=data["name"],
-                description=data["description"],
-
-                role_id=data["role"]["id"] if "role" in data else None,
-                status_id=data["status"]["value"] if "status" in data else None,
-                vlan_id=data["vlan"]["id"] if "vlan" in data else None,
-                vrf_id=data["vrf"]["id"] if "vrf" in data else None,
-                tenant_id=data["tenant"]["id"] if "tenant" in data else None,
-                site_id=data["site"]["id"] if "site" in data else None,
-            )
-
-        return prefixes
+        return {data["id"], self.prefix_get(data) for data in res["results"]}
 
 
     def aggregates_read(self):
         '''
         '''
 
-        aggregates = {}
-
         req = self.api_read("ipam", "aggregates")
         res = req.json()
 
-        for data in res["results"]:
-            aggregates[data["id"]] = Prefix(
-                data["id"], # aggregate_id
-
-                data["prefix"], # prefix
-
-                rir=data["rir"],
-                custom_fields=data["custom_fields"],
-
-                description=data["description"],
-            )
-
-        return prefixes
+        return {data["id"], self.aggregate_get(data) for data in res["results"]}
 
 
     def vlans_read(self):
         '''
         '''
 
-        vlans = {}
-
         req = self.api_read("ipam", "vlans")
         res = req.json()
 
-        for data in res["results"]:
-            vlan[data["id"]] = VLAN(
-                data["id"], # vlan_id
-
-                data["vid"], # vid
-
-                name=data["name"],
-                description=data["description"],
-
-                status_id=data["status"]["value"] if "status" in data else None,
-                group_id=data["group"]["id"] if "status" in data else None,
-                tenant_id=data["tenant"]["id"] if "tenant" in data else None,
-                site_id=data["site"]["id"] if "site" in data else None,
-            )
-
-        return vlans
+        return {data["id"], self.vlan_get(data) for data in res["results"]}
 
 
     def vlan_groups_read(self):
@@ -332,18 +244,7 @@ class NetBox(BaseBackend):
         req = self.api_read("ipam", "vlan-groups")
         res = req.json()
 
-        for data in res["results"]:
-            vlans[data["id"]] = VLANGroup(
-                data["id"], # vlan_group_id
-
-                slug=data["slug"], # slug
-
-                name=data["name"],
-
-                site_id=data["site"]["id"] if "site" in data else None,
-            )
-
-        return vlan_groups
+        return {data["id"], self.vlan_group_get(data) for data in res["results"]}
 
 
     def vrfs_read(self):
@@ -355,17 +256,149 @@ class NetBox(BaseBackend):
         req = self.api_read("ipam", "vlan-groups")
         res = req.json()
 
-        for data in res["results"]:
-            vrfs[data["id"]] = VRF(
-                data["id"], # vrf_id
+        return {data["id"], self.vrf_get(data) for data in res["results"]}
 
-                data["rd"], # route_distinguisher
-                enforce_unique=data["enforce_unique"], 
 
-                name=data["name"],
-                description=data["description"],
+    #
+    ##
+    #
 
-                site_id=data["site"]["id"] if "site" in data else None,
+
+    def roles_write(self, roles):
+        '''
+        '''
+
+        roles_old_to_new = dict()
+        roles_new = dict()
+
+        for role in roles:
+            # Write object to NetBox.
+            req = self.api_write(
+                "ipam",
+                "roles",
+                data={
+                    "name": role.name,
+                    "weight": role.weight,
+                    "slug": role.slug,                
+                },
             )
 
-        return vrfs
+            # Get returned NetBox object, with new ID.
+            res = req.json()
+            new_role = self.role_get(res["results"])
+            new_roles[new_role.id] = new_role
+
+            # Take old ID and new ID, and generate a mapping.
+            id_old_new[role.id] = new_role.id
+
+        return (roles_new, roles_old_to_new)
+
+
+    #
+    ##
+    #
+
+
+    def role_get(self, data):
+        '''
+        '''
+
+        return Role(
+            data["id"], # role_id
+            data["weight"], # weight
+            slug=data["slug"],
+            name=data["name"],
+        )
+
+
+    def ip_address_get(self, data):
+        '''
+        '''
+
+        return IPAddress(
+            data["id"], # ip_address_id
+            data["address"], # address
+            description=data["description"],
+            custom_fields=data["custom_fields"],
+            status_id=data["status"]["value"] if "status" in data else None,
+            nat_inside_id=data["nat_inside"]["id"] if "nat_inside" in data else None,
+            nat_outside_id=data["nat_outside"]["id"] if "nat_outside" in data else None,
+            interface_id=data["interface"]["id"] if "interface" in data else None,
+            vrf_id=data["vrf"]["id"] if "vrf" in data else None,
+            tenant_id=data["tenant"]["id"] if "tenant" in data else None,
+        )
+
+
+    def prefix_get(self, data):
+        '''
+        '''
+
+        return Prefix(
+            data["id"], # prefix_id
+            data["prefix"], # prefix
+            is_pool=data["is_pool"],
+            custom_fields=data["custom_fields"],
+            name=data["name"],
+            description=data["description"],
+            role_id=data["role"]["id"] if "role" in data else None,
+            status_id=data["status"]["value"] if "status" in data else None,
+            vlan_id=data["vlan"]["id"] if "vlan" in data else None,
+            vrf_id=data["vrf"]["id"] if "vrf" in data else None,
+            tenant_id=data["tenant"]["id"] if "tenant" in data else None,
+            site_id=data["site"]["id"] if "site" in data else None,
+        )
+
+
+    def aggregate_get(self, data):
+        '''
+        '''
+
+        return Aggregate(
+            data["id"], # aggregate_id
+            data["prefix"], # prefix
+            rir=data["rir"],
+            custom_fields=data["custom_fields"],
+            description=data["description"],
+        )
+
+
+    def vlan_get(self, data):
+        '''
+        '''
+
+        return VLAN(
+            data["id"], # vlan_id
+            data["vid"], # vid
+            name=data["name"],
+            description=data["description"],
+            status_id=data["status"]["value"] if "status" in data else None,
+            group_id=data["group"]["id"] if "status" in data else None,
+            tenant_id=data["tenant"]["id"] if "tenant" in data else None,
+            site_id=data["site"]["id"] if "site" in data else None,
+        )
+
+
+    def vlan_group_get(self, data):
+        '''
+        '''
+
+        return VLANGroup(
+            data["id"], # vlan_group_id
+            slug=data["slug"], # slug
+            name=data["name"],
+            site_id=data["site"]["id"] if "site" in data else None,
+        )
+
+
+    def vrf_get(self, data):
+        '''
+        '''
+
+        return VRF(
+            data["id"], # vrf_id
+            data["rd"], # route_distinguisher
+            enforce_unique=data["enforce_unique"], 
+            name=data["name"],
+            description=data["description"],
+            site_id=data["site"]["id"] if "site" in data else None,
+        )

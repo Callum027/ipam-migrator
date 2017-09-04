@@ -19,7 +19,7 @@
 
 
 '''
-Database type for VLAN groups.
+Database type for VRFs.
 '''
 
 
