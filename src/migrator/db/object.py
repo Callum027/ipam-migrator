@@ -23,6 +23,9 @@ Database object base class.
 '''
 
 
+import json
+
+
 class Object(object):
     '''
     Database object base class.
@@ -37,6 +40,23 @@ class Object(object):
         self.object_id = object_id
         self.name = name
         self.description = description
+
+
+    def object_str(self, *args, **kwargs):
+        '''
+        '''
+
+        params = dict()
+
+        params["id"] = self.id
+        if self.name:
+            params["name"] = self.name
+        if self.description:
+            params["description"] = self.description
+        for key, value in params.values():
+            params[key] = value
+
+        return json.dumps(params)
 
 
     def __hash__(self):

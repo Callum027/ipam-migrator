@@ -36,7 +36,7 @@ class VLAN(Object):
                  vlan_id,
                  vid,
                  name=None, description=None,
-                 status_id=None, group_id=None, tenant_id=None, site_id=None):
+                 status_id=None):
         '''
         VLAN object constructor.
         '''
@@ -45,3 +45,15 @@ class VLAN(Object):
 
         self.vid = vid
         self.status_id = status_id
+
+
+    def __str__(self):
+        '''
+        Human-readable stringifier method for VLANs,
+        suitable for dumping to output.
+        '''
+
+        return self.object_str(
+            vid=self.vid,
+            status_id=self.status_id,
+        )

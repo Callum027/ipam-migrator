@@ -35,7 +35,6 @@ class BaseBackend(meta=abc.ABCMeta):
     @abc.abstractmethod
     def database_read(self,
                       read_roles=True,
-                      read_services=True,
                       read_ip_addresses=True,
                       read_prefixes=True,
                       read_aggregates=True,

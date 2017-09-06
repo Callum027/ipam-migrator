@@ -25,6 +25,7 @@ Database object.
 
 import copy
 import ipaddress
+import json
 
 
 class Database(object):
@@ -52,3 +53,18 @@ class Database(object):
         self.vlan_groups = tuple(copy.deepcopy(vlans))
 
         self.vrfs = tuple(copy.deepcopy(vrfs))
+
+
+    def __str__(self):
+        return json.dumps({
+            "roles": self.roles,
+
+            "ip_addresses": self.ip_addresses,
+            "prefixes": self.prefixes,
+            "aggregates": self.aggregates,
+
+            "vlans": self.vlans,
+            "vlan_groups": self.vlan_groups,
+
+            "vrfs": self.vrfs,
+        }, sort_keys=True, indent=4)

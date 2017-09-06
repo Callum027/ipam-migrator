@@ -47,7 +47,18 @@ class Aggregate(Object):
         super.__init__(aggregate_id, name, description)
 
         self.prefix = ipaddress.ip_network(prefix)
-
         self.rir = rir
+        self.custom_fields = custom_fields.copy()
 
-        self.custom_fields = dict(custom_fields)
+
+    def __str__(self):
+        '''
+        Human-readable stringifier method for Internet Protocol (IP) aggregate subnet prefixes,
+        suitable for dumping to output.
+        '''
+
+        return self.object_str(
+            prefix=self.prefix,
+            rir=self.rir,
+            custom_fields=self.custom_fields,
+        )

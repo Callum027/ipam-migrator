@@ -36,9 +36,7 @@ class VRF(Object):
                  vrf_id,
                  route_distinguisher,
                  enforce_unique=False,
-                 name=None,
-                 description=None,
-                 tenant_id=None):
+                 name=None, description=None):
         '''
         VLAN group object constructor.
         '''
@@ -48,4 +46,14 @@ class VRF(Object):
         self.route_distinguisher = route_distinguisher
         self.enforce_unique = enforce_unique
 
-        self.tenant_id = tenant_id
+
+    def __str__(self):
+        '''
+        Human-readable stringifier method for VRFs,
+        suitable for dumping to output.
+        '''
+
+        return self.object_str(
+            route_distinguisher=self.route_distinguisher,
+            enforce_unique=self.enforce_unique,
+        )

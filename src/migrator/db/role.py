@@ -46,3 +46,12 @@ class Role(Object):
         # Internal fields.
         self.weight = weight
         self.slug = slug if slug else name.lower().replace(" ", "-").replace("\t", "-")
+
+
+    def __str__(self):
+        '''
+        Human-readable stringifier method for Internet Protocol (IP) subnet prefixes,
+        suitable for dumping to output.
+        '''
+
+        return self.object_str(weight=self.weight, slug=self.slug)

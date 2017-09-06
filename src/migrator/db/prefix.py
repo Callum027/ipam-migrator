@@ -40,7 +40,7 @@ class Prefix(Object):
                  is_pool=False,
                  name=None, description=None,
                  role_id=None, status_id=None,
-                 vlan_id=None, vrf_id=None, tenant_id=None, site_id=None):
+                 vlan_id=None, vrf_id=None):
         '''
         VLAN object constructor.
         '''
@@ -57,5 +57,23 @@ class Prefix(Object):
 
         self.vlan_id = vlan_id
         self.vrf_id = vrf_id
-        self.tenant_id = tenant_id
-        self.site_id = site_id
+
+
+    def __str__(self):
+        '''
+        Human-readable stringifier method for Internet Protocol (IP) subnet prefixes,
+        suitable for dumping to output.
+        '''
+
+        return self.object_str(
+            prefix=self.prefix,
+            family=self.family,
+
+            is_pool=self.is_pool,
+
+            role_id=self.role_id,
+            status_id=self.status_id,
+
+            vlan_id=self.vlan_id,
+            vrf_id=self.vrf_id,
+        )

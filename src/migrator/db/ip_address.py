@@ -30,7 +30,7 @@ from migrator.db.object import Object
 
 class IPAddress(Object):
     '''
-    Database type for Internet Protocol (IP) subnet prefixes.
+    Database type for Internet Protocol (IP) addresses.
     '''
 
 
@@ -40,7 +40,7 @@ class IPAddress(Object):
                  description=None,
                  custom_fields=None,
                  status_id=None, nat_inside_id=None, nat_outside_id=None,
-                 interface_id=None, vrf_id=None, tenant_id=None):
+                 vrf_id=None):
         '''
         VLAN object constructor.
         '''
@@ -59,6 +59,23 @@ class IPAddress(Object):
         self.nat_outside_id = nat_outside_id
 
         # Grouping fields, in ascending order of scale.
-        self.interface_id = interface_id
         self.vrf_id = vrf_id
-        self.tenant_id = tenant_id
+
+
+    def __str__(self):
+        '''
+        Human-readable stringifier method for Internet Protocol (IP) addresses,
+        suitable for dumping to output.
+        '''
+
+        return self.object_str(
+            address=self.address,
+            family=self.family,
+            custom_fields=self.custom_fields,
+
+            status_id=self.status_id,
+            nat_inside_id=self.nat_inside_id,
+            nat_outside_id=self.nat_outside_id,
+
+            vrf_id=self.vrf_id,
+        )

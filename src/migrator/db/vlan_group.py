@@ -45,3 +45,15 @@ class VLANGroup(Object):
 
         self.slug = slug if slug else name.lower().replace(" ", "-").replace("\t", "-")
         self.status_id = status_id
+
+
+    def __str__(self):
+        '''
+        Human-readable stringifier method for VLAN groups,
+        suitable for dumping to output.
+        '''
+
+        return self.object_str(
+            slug=self.slug,
+            status_id=self.status_id,
+        )
