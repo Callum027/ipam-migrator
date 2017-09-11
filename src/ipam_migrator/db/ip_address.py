@@ -1,6 +1,6 @@
 #
-# Migrator tool for phpIPAM-NetBox
-# migrator/db/ip/address.py - Internet Protocol (IP) addresses
+# IPAM database migration script
+# ipam_migrator/db/ip/address.py - Internet Protocol (IP) addresses
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -25,7 +25,7 @@ Internet Protocol (IP) addresses.
 
 import ipaddress
 
-from migrator.db.object import Object
+from ipam_migrator.db.object import Object
 
 
 class IPAddress(Object):

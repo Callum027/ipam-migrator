@@ -1,6 +1,6 @@
 #
-# Migrator tool for phpIPAM-NetBox
-# migrator/migrator.py - main routine
+# IPAM database migration script
+# ipam_migrator/ipam_migrator.py - main routine
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -33,7 +33,7 @@ def main():
 
     # Parse
     argparser = argparse.ArgumentParser(
-        description="Export IPAM information from one database and import it to another.",
+        description="Transfer IPAM information between two (possibly differing) systems",
     )
 
     argparser.add_argument(
@@ -95,13 +95,15 @@ def main():
             output_api_user = output_api_data[2]
             output_api_password = output_api_data[3]
 
+    # Set up the logger.
+
     # Connect to the input API endpoint, and read its database.
     if input_api_type == "phpipam":
         input_backend = PhpIPAM(input_api_endpoint, input_api_user, input_api_password)
     elif input_api_type == "netbox":
         input_backend = NetBox(input_api_endpoint, input_api_token)
     else:
-        raise RuntimeError("unknown input database backend type '{}'".format(input_api_type)
+        raise RuntimeError("unknown input database backend type '{}'".format(input_api_type))
 
     input_database = input_backend.database_read()
 
@@ -113,7 +115,7 @@ def main():
         elif output_api_type == "netbox":
             output_backend = NetBox(output_api_endpoint, output_api_token)
         else:
-            raise RuntimeError("unknown output database backend type '{}'".format(output_api_type)
+            raise RuntimeError("unknown output database backend type '{}'".format(output_api_type))
 
         output_backend.database_write(input_database)
 

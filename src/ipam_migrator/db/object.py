@@ -1,6 +1,6 @@
 #
-# Migrator tool for phpIPAM-NetBox
-# migrator/db/object.py - Internet Protocol (IP) subnet prefixes
+# IPAM database migration script
+# ipam_migrator/db/object.py - Internet Protocol (IP) subnet prefixes
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify

@@ -1,6 +1,6 @@
 #
-# Migrator tool for phpIPAM-NetBox
-# migrator/db/vlan_group.py - database type for VLAN groups
+# IPAM database migration script
+# ipam_migrator/db/vlan_group.py - database type for VLAN groups
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@ Database type for VLAN groups.
 '''
 
 
-from migrator.db.object import Object
+from ipam_migrator.db.object import Object
 
 
 class VLANGroup(Object):

@@ -1,6 +1,6 @@
 #
-# Migrator tool for phpIPAM-NetBox
-# migrator/db/vlan.py - database type for VLANs
+# IPAM database migration script
+# ipam_migrator/db/ip/aggregate.py - Internet Protocol (IP) aggregate subnet prefixes
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -19,41 +19,46 @@
 
 
 '''
-Database type for VLANs.
+Internet Protocol (IP) aggregate subnet prefixes.
 '''
 
 
-from migrator.db.object import Object
+import ipaddress
+
+from ipam_migrator.db.object import Object
 
 
-class VLAN(Object):
+class Aggregate(Object):
     '''
-    Database type for VLANs.
+    Database type for Internet Protocol (IP) aggregate subnet prefixes.
     '''
 
 
     def __init__(self,
-                 vlan_id,
-                 vid,
-                 name=None, description=None,
-                 status_id=None):
+                 aggregate_id,
+                 prefix,
+                 rir=None,
+                 custom_fields=None,
+                 name=None, description=None):
         '''
         VLAN object constructor.
         '''
 
-        self.__init__(vlan_id, name, description)
+        super.__init__(aggregate_id, name, description)
 
-        self.vid = vid
-        self.status_id = status_id
+        self.prefix = ipaddress.ip_network(prefix)
+        self.rir = rir
+        self.custom_fields = custom_fields.copy()
 
 
     def __str__(self):
         '''
-        Human-readable stringifier method for VLANs,
+        Human-readable stringifier method for Internet Protocol (IP) aggregate subnet prefixes,
         suitable for dumping to output.
         '''
 
         return self.object_str(
-            vid=self.vid,
-            status_id=self.status_id,
+            prefix=self.prefix,
+            rir=self.rir,
+            custom_fields=self.custom_fields,
         )

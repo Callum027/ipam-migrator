@@ -1,8 +1,8 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 #
-# l3overlay - IPsec overlay network manager
-# Makefile  - Build system
+# IPAM database migration script
+# Makefile - Build system
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -35,10 +35,10 @@
 #   $ make install <KEY>=<VALUE>
 #
 # Examples:
-# - install l3overlay to a virtualenv and configuration in /opt,
+# - install ipam-migrator to a virtualenv and configuration in /opt,
 #   with a systemd unit installed to standard directories:
 #     $ make install systemd-install \
-#       VIRTUALENV="/opt/venv/l3overlay" CONFIG_DIR="/opt/l3overlay"
+#       VIRTUALENV="/opt/venv/ipam-migrator"
 #
 
 
@@ -56,25 +56,15 @@ else
 PREFIX = /usr/local
 endif
 
-ETC_DIR = $(PREFIX)/etc
-SBIN_DIR = $(PREFIX)/sbin
-
-CONFIG_DIR = $(ETC_DIR)/l3overlay
+BIN_DIR = $(PREFIX)/bin
 
 TEST_PRESERVE_TMP_DIR = 0
 
-# Makefile internal variable for service variables.
-SERVICE_PREFIX      = 
-# Actual parameters passed to configuration files.
-SERVICE_ETC_DIR     = $(SERVICE_PREFIX)/etc
-SERVICE_VAR_RUN_DIR = $(SERVICE_PREFIX)/var/run
-SERVICE_SYSTEMD_DIR = $(SERVICE_PREFIX)/lib/systemd
-
 # Template file variable list.
-PARAMS = PREFIX ETC_DIR SBIN_DIR CONFIG_DIR SERVICE_ETC_DIR SERVICE_VAR_RUN_DIR SERVICE_SYSTEMD_DIR
+PARAMS = PREFIX ETC_DIR BIN_DIR CONFIG_DIR SERVICE_ETC_DIR SERVICE_VAR_RUN_DIR SERVICE_SYSTEMD_DIR
 
 # Internal Makefile parameters that (normally) should not be changed.
-INSTALL_SCRIPTS = $(SBIN_DIR)
+INSTALL_SCRIPTS = $(BIN_DIR)
 
 
 ##############################
@@ -142,7 +132,7 @@ PYTHON = $(shell which python3.4)
 endif
 
 ifndef PYTHON
-$(error l3overlay only supports Python >= 3.4.0)
+$(error ipam-migrator only supports Python >= 3.4.0)
 endif
 
 # Python tools.
@@ -166,7 +156,7 @@ RMDIR   = rm -rf
 #
 
 all:
-	@echo "l3overlay make targets:"
+	@echo "ipam-migrator make targets:"
 	@echo "  lint - run pylint code quality check"
 	@echo "  test - run unit tests"
 	@echo
@@ -184,7 +174,7 @@ all:
 
 
 lint:
-	$(PYLINT) $(SRC_DIR)/l3overlay --disable=duplicate-code 2>&1 | tee make-lint.log
+	$(PYLINT) $(SRC_DIR)/ipam_migrator --disable=duplicate-code 2>&1 | tee make-lint.log
 	@echo "pylint output written to make-lint.log"
 
 
@@ -210,36 +200,16 @@ install:
 	$(PYTHON) $(SETUP_PY) install $(SETUP_PY_PREFIX) $(SETUP_PY_INSTALL_LIB) $(SETUP_PY_INSTALL_SCRIPTS) $(SETUP_PY_INSTALL_DATA)
 
 
-%: %.in .FORCE
-	$(PYTHON) $(TEMPLATE_PROCESS_PY) $< $@ $(foreach KEY,$(PARAMS),$(KEY)=$($(KEY)))
-
-default-install: default/l3overlay
-	$(INSTALL) -m 644 default/l3overlay $(SERVICE_ETC_DIR)/default/l3overlay
-
-systemd-install: default-install systemd/l3overlay.service
-	$(INSTALL) -m 644 systemd/l3overlay.service $(SERVICE_SYSTEMD_DIR)/system/l3overlay.service
-
-sysv-install: default-install init.d/l3overlay
-	$(INSTALL) -m 755 init.d/l3overlay $(SERVICE_ETC_DIR)/init.d/l3overlay
-
-upstart-install: default-install upstart/l3overlay.conf
-	$(INSTALL) -m 644 upstart/l3overlay.conf $(SERVICE_ETC_DIR)/init/l3overlay.conf
-
-
 uninstall:
-	$(PIP) uninstall -y l3overlay
+	$(PIP) uninstall -y ipam_migrator
 
 
 clean:
 	$(RM) make-lint.log
-	$(RM) default/l3overlay
-	$(RM) systemd/l3overlay.service
-	$(RM) init.d/l3overlay
-	$(RM) upstart/l3overlay.conf
 	$(RMDIR) .tests
 	$(RMDIR) build
 	$(RMDIR) dist
-	$(RMDIR) src/l3overlay.egg-info
+	$(RMDIR) src/ipam_migrator.egg-info
 	for d in $(shell $(FIND) -name '__pycache__'); do \
 		$(RMDIR) $$d; \
 	done

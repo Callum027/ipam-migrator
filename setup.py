@@ -39,14 +39,14 @@ with open(os.path.join(here, "README.md"), "r", encoding="UTF-8") as f:
 
 # Setup the package.
 setuptools.setup(
-    name = "l3overlay",
+    name = "ipam-migrator",
 
-    description = "IPsec overlay network manager",
+    description = "IPAM database migration script",
     long_description = long_description,
 
     version = "1.0.0",
 
-    url = "https://github.com/catalyst/l3overlay",
+    url = "https://github.com/Callum027/ipam-migrator",
 
     author = "Callum Dickinson",
     author_email = "callum.dickinson@catalyst.net.nz",
@@ -54,7 +54,7 @@ setuptools.setup(
     license = "GPLv3+",
 
     classifiers = [
-        "Development Status :: 5 - Production/Stable",
+        "Development Status :: 3 - Alpha",
 
         "Intended Audience :: System Administrators",
         "Topic :: System :: Networking",
@@ -67,25 +67,16 @@ setuptools.setup(
         "Programming Language :: Python :: 3.5",
     ],
 
-    keywords = "l3overlay ipsec bird routing namespace mesh network",
+    keywords = "ipam phpipam netbox",
 
-    install_requires = ["jinja2", "pyroute2>=0.4.6"],
+    install_requires = ["requests"],
 
     packages = setuptools.find_packages(where=os.path.join(here, "src")),
     package_dir = {"": "src"},
 
     entry_points = {
         "console_scripts": [
-            "l3overlayd = l3overlay.l3overlayd.main:main",
-            "l3overlay-birdc = l3overlay.l3overlay_birdc:main",
-        ],
-    },
-
-    package_data = {
-        'l3overlay': [
-            os.path.join("template", "bird.conf"),
-            os.path.join("template", "ipsec.conf"),
-            os.path.join("template", "ipsec.secrets"),
+            "ipam-migrator = ipam_migrator.ipam_migrator:main",
         ],
     },
 )

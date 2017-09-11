@@ -1,6 +1,6 @@
 #
-# Migrator tool for phpIPAM-NetBox
-# migrator/backend/netbox.py - NetBox database backend
+# IPAM database migration script
+# ipam_migrator/backend/netbox.py - NetBox database backend
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -27,13 +27,13 @@ import datetime
 
 import requests
 
-from migrator.db.role import Role
-from migrator.db.ip_address import IPAddress
-from migrator.db.prefix import Prefix
-from migrator.db.aggregate import Aggregate
-from migrator.db.vlan import VLAN
-from migrator.db.vlan_group import VLANGroup
-from migrator.db.vrf import VRF
+from ipam_migrator.db.role import Role
+from ipam_migrator.db.ip_address import IPAddress
+from ipam_migrator.db.prefix import Prefix
+from ipam_migrator.db.aggregate import Aggregate
+from ipam_migrator.db.vlan import VLAN
+from ipam_migrator.db.vlan_group import VLANGroup
+from ipam_migrator.db.vrf import VRF
 
 
 class HTTPTokenAuth(requests.auth.AuthBase):

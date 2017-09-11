@@ -1,6 +1,6 @@
 #
-# Migrator tool for phpIPAM-NetBox
-# migrator/db/ip/aggregate.py - Internet Protocol (IP) aggregate subnet prefixes
+# IPAM database migration script
+# ipam_migrator/db/vrf.py - database type for VRFs
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -19,46 +19,41 @@
 
 
 '''
-Internet Protocol (IP) aggregate subnet prefixes.
+Database type for VRFs.
 '''
 
 
-import ipaddress
-
-from migrator.db.object import Object
+from ipam_migrator.db.object import Object
 
 
-class Aggregate(Object):
+class VRF(Object):
     '''
-    Database type for Internet Protocol (IP) aggregate subnet prefixes.
+    Database type for VRFs.
     '''
 
 
     def __init__(self,
-                 aggregate_id,
-                 prefix,
-                 rir=None,
-                 custom_fields=None,
+                 vrf_id,
+                 route_distinguisher,
+                 enforce_unique=False,
                  name=None, description=None):
         '''
-        VLAN object constructor.
+        VLAN group object constructor.
         '''
 
-        super.__init__(aggregate_id, name, description)
+        self.__init__(vrf_id, name, description)
 
-        self.prefix = ipaddress.ip_network(prefix)
-        self.rir = rir
-        self.custom_fields = custom_fields.copy()
+        self.route_distinguisher = route_distinguisher
+        self.enforce_unique = enforce_unique
 
 
     def __str__(self):
         '''
-        Human-readable stringifier method for Internet Protocol (IP) aggregate subnet prefixes,
+        Human-readable stringifier method for VRFs,
         suitable for dumping to output.
         '''
 
         return self.object_str(
-            prefix=self.prefix,
-            rir=self.rir,
-            custom_fields=self.custom_fields,
+            route_distinguisher=self.route_distinguisher,
+            enforce_unique=self.enforce_unique,
         )

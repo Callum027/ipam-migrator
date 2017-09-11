@@ -1,6 +1,6 @@
 #
-# Migrator tool for phpIPAM-NetBox
-# migrator/backend/base.py - migrator backend base class
+# IPAM database migration script
+# ipam_migrator/backend/base.py - database backend base class
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,7 @@
 
 
 '''
-Migrator backend base class.
+Database backend base class.
 '''
 
 
@@ -28,7 +28,7 @@ import abc
 
 class BaseBackend(meta=abc.ABCMeta):
     '''
-    Migrator backend base class.
+    Database backend base class.
     '''
 
 
