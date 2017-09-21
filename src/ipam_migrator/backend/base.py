@@ -26,7 +26,7 @@ Database backend base class.
 import abc
 
 
-class BaseBackend(meta=abc.ABCMeta):
+class BaseBackend(abc.ABC):
     '''
     Database backend base class.
     '''

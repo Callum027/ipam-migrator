@@ -27,26 +27,58 @@ import datetime
 
 import requests
 
+from ipam_migrator.backend.base import BaseBackend
+
+from ipam_migrator.exception import APIOptionsError
+from ipam_migrator.exception import APIReadError
+from ipam_migrator.exception import AuthMethodUnsupportedError
+
 
 class PhpIPAM(BaseBackend):
     '''
     '''
 
 
-    def __init__(self,
-                 api_endpoint, api_user, api_pass):
+    def __init__(self, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify):
         '''
         '''
 
         # Configuration fields.
         self.api_endpoint = api_endpoint
-        self.api_user = api_user
-        self.api_pass = api_pass
+
+        self.api_auth_method = api_auth_method
+        if self.api_auth_method == "login":
+            self.api_user = api_auth_data[0]
+            self.api_pass = api_auth_data[1]
+        else:
+            raise AuthMethodUnsupportedError(
+                "phpipam",
+                self.api_auth_method,
+                ("login",),
+            )
+
+        self.api_ssl_verify = api_ssl_verify
+        if not self.api_ssl_verify:
+            # Try to uppress urllib3's InsecureRequestWarning.
+            # disable_warnings is not available on all urllib3 versions.
+            # Only call it if it is available.
+            try:
+                from urllib3 import disable_warnings
+                from urllib3.exceptions import InsecureRequestWarning
+                disable_warnings(InsecureRequestWarning)
+            except ImportError:
+                pass
+            try:
+                from requests.packages.urllib3 import disable_warnings
+                from requests.packages.urllib3.exceptions import InsecureRequestWarning
+                disable_warnings(InsecureRequestWarning)
+            except ImportError:
+                pass
+
 
         # Runtime fields.
         self.token = None
         self.token_expires = None
-
 
     #
     ##
@@ -124,26 +156,39 @@ class PhpIPAM(BaseBackend):
         2.1 Authentication
         '''
 
-        if self.token and self.token_expires < datetime.utcnow():
+        if self.token and not self.token_expires:
             return
-
-        req = requests.post(
-            "{}/user".format(self.api_url),
-            auth=requests.auth.HTTPBasicAuth(self.api_user, self.api_pass),
-        )
-        res = req.json()
-
-        if bool(res["success"]):
-            self.token = res["data"]["token"]
-            # Example format: 2015-07-09 20:05:28
-            self.token_expires = datetime.strptime(res["data"]["expires"], "%Y-%m-%d %H:%M:%S")
+        elif self.token and \
+             self.token_expires and self.token_expires >= datetime.datetime.utcnow():
+            return
         else:
-            raise RuntimeError(
-                "failed to receive authentication token from phpIPAM: error {} ({})".format(
-                    res["code"],
-                    res["message"],
-                ),
+            response = requests.post(
+                "{}/user/".format(self.api_endpoint),
+                auth=requests.auth.HTTPBasicAuth(self.api_user, self.api_pass),
+                verify=self.api_ssl_verify,
             )
+
+            if not response.text:
+                raise RuntimeError("ERROR {}: (empty response)".format(response.status_code))
+            elif response.text == "Authentication failed":
+                raise RuntimeError("ERROR {}: authentication failed".format(response.status_code))
+
+            obj = response.json()
+
+            if obj["success"]:
+                self.token = obj["data"]["token"]
+                # Example format: 2015-07-09 20:05:28
+                self.token_expires = datetime.datetime.strptime(
+                    obj["data"]["expires"],
+                    "%Y-%m-%d %H:%M:%S",
+                )
+            else:
+                raise RuntimeError(
+                    "ERROR {}: failed to receive authentication token from phpIPAM ({})".format(
+                        obj["code"],
+                        obj["message"],
+                    ),
+                )
 
 
     def api_read(self, *args, data=None):
@@ -152,13 +197,65 @@ class PhpIPAM(BaseBackend):
 
         self.api_authenticate()
 
-        request = "/".join(args)
+        command = "/".join((str(a) for a in args))
 
-        return requests.get(
-            "{}/{}".format(self.api_endpoint, request),
+        response = requests.get(
+            "{}/{}/".format(self.api_endpoint, command),
             headers={"phpipam-token": self.token},
             data=data,
+            verify=self.api_ssl_verify,
         )
+
+        if not response.text:
+            raise APIReadError(response.status_code, "(empty response)")
+
+        obj = response.json()
+
+        if not obj["success"]:
+            raise APIReadError(obj["code"], obj["message"])
+
+        return obj["data"]
+
+
+    def api_controller_methods(self, *args):
+        '''
+        '''
+
+        self.api_authenticate()
+
+        command = "/".join((str(a) for a in args))
+
+        response = requests.options(
+            "{}/{}/".format(self.api_endpoint, command),
+            headers={"phpipam-token": self.token},
+            verify=self.api_ssl_verify,
+        )
+
+        if not response.text:
+            raise APIOptionsError(response.status_code, "(empty response)")
+
+        obj = response.json()
+
+        if not obj["success"]:
+            raise APIOptionsError(obj["code"], obj["message"])
+
+        # Create a dict which keys a command tuple with its available methods.
+        #
+        # Example dict:
+        # {
+        #   # https://ipam.example.com/api/example/vlans
+        #   ("vlans",): ["OPTIONS", "GET"],
+        #   # https://ipam.example.com/api/example/vlans/{id}
+        #   ("vlans", "{id}"): ["GET", "POST", "PATCH", "DELETE"],
+        # }
+        command_methods = {}
+        for href_methods in obj["data"]["methods"]:
+            href = href_methods["href"]
+            command = tuple(href.strip("/").split("/"))[2:]
+            methods = href_methods["methods"]
+            command_methods[command] = (met["method"] for met in methods)
+
+        return command_methods
 
 
     #
@@ -172,10 +269,9 @@ class PhpIPAM(BaseBackend):
         3.1 Sections controller
         '''
 
-        req = self.api_read("sections")
-        res = req.json()
+        obj = self.api_read("sections")
 
-        return res["data"]
+        return obj["data"]
 
 
     def vlans_read(self):
@@ -184,21 +280,24 @@ class PhpIPAM(BaseBackend):
         3.5 VLAN controller
         '''
 
-        vlans = {}
-
-        req = self.api_read("vlan")
-        res = req.json()
-
-        for data in res["data"]:
-            vlans[data["id"]] = VLAN(
-                data["id"], # vlan_id
-                data["number"], # vid
-                name=data["name"],
-                description=data["description"],
-                # Unused: domainId - L2 domain identifier (default 1 – default domain)
-            )
-
-        return vlans
+        # GET command for the VLANs controller is not supported in phpIPAM
+        # versions older than 1.3. It's much faster, though, so use it if
+        # it's available.
+        if "GET" in self.api_controller_methods("vlans")[("vlans",)]:
+            return {data["id"]:self.vlan_get(data) for data in self.api_read("vlans")}
+        else:
+            vlans = {}
+            for i in range(1, 4095):
+                try:
+                    data = self.api_read("vlans", i)
+                    print(data)
+                    vlans[i] = self.vlan_get(data)
+                except APIReadError as err:
+                    if err.api_code == 404 or err.api_message == "Vlan not found":
+                        continue
+                    else:
+                        pass
+            return vlans
 
 
     def prefixes_read_from_vlans(self, vlans):
@@ -210,10 +309,9 @@ class PhpIPAM(BaseBackend):
         prefixes = {}
 
         for vlan_id in vlans.keys():
-            req = self.api_read("devices", vlan_id)
-            res = req.json()
+            obj= self.api_read("devices", vlan_id)
 
-            for data in res["data"]:
+            for data in obj["data"]:
                 prefixes[data["id"]] = Prefix(
                     data["id"], # prefix_id
                     "{}/{}".format(data["subnet"], data["mask"]), # prefix
@@ -258,10 +356,9 @@ class PhpIPAM(BaseBackend):
         ip_addresses = {}
 
         for prefix_id in prefixes.keys():
-            req = self.api_read("subnets", prefix_id, "addresses")
-            res = req.json()
+            obj = self.api_read("subnets", prefix_id, "addresses")
 
-            for data in res["data"]:
+            for data in obj["data"]:
                 ip_addresses[data["id"]] = Address(
                     data["id"], # address_id
                     data["ip"], # address
@@ -318,3 +415,20 @@ class PhpIPAM(BaseBackend):
         '''
 
         raise NotImplementedError()
+
+
+    #
+    ##
+    #
+
+    def vlan_get(self, data):
+        '''
+        '''
+
+        return VLAN(
+            data["id"], # vlan_id
+            data["number"], # vid
+            name=data["name"],
+            description=data["description"],
+            # Unused: domainId - L2 domain identifier (default 1 – default domain)
+        )

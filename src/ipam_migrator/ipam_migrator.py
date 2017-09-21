@@ -24,6 +24,12 @@ Main routine.
 
 
 import argparse
+import logging
+
+from ipam_migrator.backend.netbox import NetBox
+from ipam_migrator.backend.phpipam import PhpIPAM
+
+from ipam_migrator.exception import AuthDataNotFoundError
 
 
 def main():
@@ -34,6 +40,22 @@ def main():
     # Parse
     argparser = argparse.ArgumentParser(
         description="Transfer IPAM information between two (possibly differing) systems",
+    )
+
+    argparser.add_argument(
+        "input_api_data",
+        metavar="INPUT-API-ENDPOINT,TYPE,AUTH-METHOD,KEY|TOKEN|(USER,PASSWORD)",
+        type=str,
+        help="input database API endpoint, type, authentication method and required information",
+    )
+
+    argparser.add_argument(
+        "output_api_data",
+        metavar="OUTPUT-API-ENDPOINT,TYPE,AUTH-METHOD,KEY|TOKEN|(USER,PASSWORD)",
+        type=str,
+        nargs="?",
+        default=None,
+        help="output database API endpoint, type, authentication method and required information",
     )
 
     argparser.add_argument(
@@ -48,78 +70,179 @@ def main():
         "-ll", "--log-level",
         metavar="LEVEL",
         type=str,
-        default=None,
+        default="INFO",
         help="use LEVEL as the logging level parameter",
     )
 
-    argparser.add_argument(
-        "input_api_data",
-        metavar="INPUT-API-ENDPOINT,TYPE,TOKEN|(USER,PASSWORD)",
-        type=str,
-        help="input database API endpoint, type, and token or user-password pair",
+    arg_input_ssl_verify = argparser.add_mutually_exclusive_group(required=False)
+    arg_input_ssl_verify.add_argument(
+        "-iasv", "--input-api-ssl-verify",
+        action="store_true",
+        help="verify the input API endpoint SSL certificate (default)",
+    )
+    arg_input_ssl_verify.add_argument(
+        "-naisv", "--no-input-api-ssl-verify",
+        action="store_false",
+        help="do NOT verify the input API endpoint SSL certificate",
     )
 
-    argparser.add_argument(
-        "output_api_data",
-        metavar="OUTPUT-API-ENDPOINT,TYPE,TOKEN|(USER,PASSWORD)",
-        type=str,
-        default=None,
-        help="output database API endpoint, type, and token or user-password pair",
+    arg_output_ssl_verify = argparser.add_mutually_exclusive_group(required=False)
+    arg_output_ssl_verify.add_argument(
+        "-oasv", "--output-api-ssl-verify",
+        action="store_true",
+        help="verify the output API endpoint SSL certificate (default)",
+    )
+    arg_output_ssl_verify.add_argument(
+        "-noasv", "--no-output-api-ssl-verify",
+        action="store_false",
+        help="do NOT verify the output API endpoint SSL certificate",
     )
 
     args = vars(argparser.parse_args())
 
-    #
-    input_api_data = args["input_api_data"].split(",")
-    input_api_endpoint = input_api_data[0]
-    input_api_type = input_api_data[1]
-    if len(input_api_data) == 3:
-        input_api_token = input_api_data[2]
-        input_api_user = None
-        input_api_password = None
-    else:
-        input_api_token = None
-        input_api_user = input_api_data[2]
-        input_api_password = input_api_data[3]
-
-    if "output_api_data" in args:
-        output_api_data = args["output_api_data"].split(",")
-        output_api_endpoint = output_api_data[0]
-        output_api_type = output_api_data[1]
-        if len(output_api_data) == 3:
-            output_api_token = output_api_data[2]
-            output_api_user = None
-            output_api_password = None
-        else:
-            output_api_token = None
-            output_api_user = output_api_data[2]
-            output_api_password = output_api_data[3]
-
     # Set up the logger.
+    log = args["log"]
+    log_level = args["log_level"]
 
-    # Connect to the input API endpoint, and read its database.
-    if input_api_type == "phpipam":
-        input_backend = PhpIPAM(input_api_endpoint, input_api_user, input_api_password)
-    elif input_api_type == "netbox":
-        input_backend = NetBox(input_api_endpoint, input_api_token)
-    else:
-        raise RuntimeError("unknown input database backend type '{}'".format(input_api_type))
+    logger = logging.getLogger("ipam-migrator")
+    logger.setLevel(log_level)
 
-    input_database = input_backend.database_read()
+    logger_formatter = logging.Formatter("%(asctime)s %(name)s: [%(levelname)s] %(message)s")
 
-    # If an output database is specified, connect to the output API endpoint,
-    # and write the input database to it.
-    if "output_api_data" in args:
-        if output_api_type == "phpipam":
-            output_backend = PhpIPAM(output_api_endpoint, output_api_user, output_api_password)
-        elif output_api_type == "netbox":
-            output_backend = NetBox(output_api_endpoint, output_api_token)
+    logger_streamhandler = logging.StreamHandler()
+    logger_streamhandler.setFormatter(logger_formatter)
+    logger.addHandler(logger_streamhandler)
+
+    if log:
+        util.directory_create(os.path.dirname(log))
+        logger_filehandler = logging.FileHandler(log_file)
+        logger_filehandler.setFormatter(logger_formatter)
+        os.chmod(log, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
+        logger.addHandler(logger_filehandler)
+
+    logger.debug("started logger")
+
+    # Start main routine, with exception capture for logging purposes.
+    try:
+        #
+        input_api_data = api_data_read(logger, args, "input")
+        input_api_endpoint = input_api_data[0]
+        input_api_type = input_api_data[1]
+        input_api_auth_method = input_api_data[2]
+        input_api_auth_data = input_api_data[3]
+        input_api_ssl_verify = input_api_data[4]
+
+        if args["output_api_data"]:
+            use_output = True
+            output_api_data = api_data_read(logger, args, "output")
+            output_api_endpoint = input_api_data[0]
+            output_api_type = output_api_data[1]
+            output_api_auth_method = output_api_data[2]
+            output_api_auth_data = output_api_data[3]
+            output_api_ssl_verify = output_api_data[4]
         else:
-            raise RuntimeError("unknown output database backend type '{}'".format(output_api_type))
+            use_output = False
 
-        output_backend.database_write(input_database)
+        # Configuration verification.
+        api_data_check(
+            logger, "input",
+            input_api_endpoint, input_api_type,
+            input_api_auth_method, input_api_auth_data,
+            input_api_ssl_verify,
+        )
 
-    # If not, write the input database to output.
+        if use_output:
+            api_data_check(
+                logger, "output",
+                output_api_endpoint, output_api_type,
+                output_api_auth_method, output_api_auth_data,
+                output_api_ssl_verify,
+            )
+
+        # Connect to the input API endpoint, and read its database.
+        input_backend = backend_create(
+            logger, "input",
+            input_api_endpoint, input_api_type,
+            input_api_auth_method, input_api_auth_data,
+            input_api_ssl_verify,
+        )
+        input_database = input_backend.database_read()
+
+        # If an output database is specified, connect to the output API endpoint,
+        # and write the input database to it.
+        if use_output:
+            input_backend = backend_create(
+                logger, "output",
+                output_api_endpoint, output_api_type,
+                output_api_auth_method, output_api_auth_data,
+                output_api_ssl_verify,
+            )
+            output_backend.database_write(input_database)
+
+        # If not, write the input database to the logger.
+        else:
+            logger.info("Input database:\n{}".format(input_database))
+
+    except Exception as e:
+        logger.exception(e)
+
+    # Main routine shutdown.
+    logger.debug("stopping logger")
+    logger.removeHandler(logger_streamhandler)
+    if log:
+        logger.removeHandler(logger_filehandler)
+
+
+def api_data_read(logger, args, name):
+    '''
+    '''
+
+    api_data_list = args["{}_api_data".format(name)].split(",")
+    api_endpoint = api_data_list[0]
+    api_type = api_data_list[1]
+    api_auth_method = api_data_list[2]
+    api_auth_data = api_data_list[3:]
+    if args["{}_api_ssl_verify".format(name)] is False and \
+       args["no_{}_api_ssl_verify".format(name)] is True:
+        api_ssl_verify = True # Default case
     else:
-        logger.info("Input database:\n{}".format(input_database))
-        
+        api_ssl_verify = args["{}_api_ssl_verify".format(name)]
+
+    return (api_endpoint, api_type, api_auth_method, api_auth_data, api_ssl_verify)
+
+
+def api_data_check(logger,
+                   database_name,
+                   api_endpoint, api_type,
+                   api_auth_method, api_auth_data,
+                   api_ssl_verify):
+    '''
+    '''
+
+    if api_auth_method == "key":
+        if not api_auth_data:
+            raise AuthDataNotFoundError(database_name, api_type, "API key")
+    elif api_auth_method == "token":
+        if not api_auth_data:
+            raise AuthDataNotFoundError(database_name, api_type, "authentication token")
+    elif api_auth_method == "login":
+        if not api_auth_data:
+            raise AuthDataNotFoundError(database_name, api_type, "user name and password")
+        if len(api_auth_data) < 2:
+            raise AuthDataNotFoundError(database_name, api_type, "password")
+
+
+def backend_create(logger,
+                   database_name,
+                   api_endpoint, api_type,
+                   api_auth_method, api_auth_data,
+                   api_ssl_verify):
+    '''
+    '''
+
+    if api_type == "phpipam":
+        return PhpIPAM(api_endpoint, api_auth_method, api_auth_data, api_ssl_verify)
+    elif input_api_type == "netbox":
+        return NetBox(api_endpoint, api_auth_method, api_auth_data, api_ssl_verify)
+    else:
+        raise RuntimeError("unknown {} database backend type '{}'".format(name, api_type))

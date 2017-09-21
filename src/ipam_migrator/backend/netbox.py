@@ -27,6 +27,8 @@ import datetime
 
 import requests
 
+from ipam_migrator.backend.base import BaseBackend
+
 from ipam_migrator.db.role import Role
 from ipam_migrator.db.ip_address import IPAddress
 from ipam_migrator.db.prefix import Prefix
@@ -34,6 +36,8 @@ from ipam_migrator.db.aggregate import Aggregate
 from ipam_migrator.db.vlan import VLAN
 from ipam_migrator.db.vlan_group import VLANGroup
 from ipam_migrator.db.vrf import VRF
+
+from ipam_migrator.exception import AuthMethodUnsupportedError
 
 
 class HTTPTokenAuth(requests.auth.AuthBase):
@@ -75,14 +79,44 @@ class NetBox(BaseBackend):
     '''
 
 
-    def __init__(self,
-                 api_endpoint, api_token):
+    def __init__(self, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify):
         '''
         '''
 
         # Configuration fields.
         self.api_endpoint = api_endpoint
-        self.api_token = api_token
+
+        self.api_auth_method = api_auth_method
+        if self.api_auth_method == "key":
+            self.api_key = api_auth_data[0]
+            self.api_token = None
+        elif self.api_auth_method == "token":
+            self.api_key = None
+            self.api_token = api_auth_data[0]
+        else:
+            raise AuthMethodUnsupportedError(
+                "netbox",
+                api_auth_method,
+                ("key", "token"),
+            )
+
+        self.api_ssl_verify = api_ssl_verify
+        if not self.api_ssl_verify:
+            # Try to uppress urllib3's InsecureRequestWarning.
+            # disable_warnings is not available on all urllib3 versions.
+            # Only call it if it is available.
+            try:
+                from urllib3 import disable_warnings
+                from urllib3.exceptions import InsecureRequestWarning
+                disable_warnings(InsecureRequestWarning)
+            except ImportError:
+                pass
+            try:
+                from requests.packages.urllib3 import disable_warnings
+                from requests.packages.urllib3.exceptions import InsecureRequestWarning
+                disable_warnings(InsecureRequestWarning)
+            except ImportError:
+                pass
 
 
     #
@@ -131,9 +165,9 @@ class NetBox(BaseBackend):
             vrfs = tuple()
 
         return Database(
-            tuple(), # roles
+            roles,
             ip_addresses,
-            prefixes if read_prefixes else tuple(), # phpIPAM: Subnets
+            prefixes if read_prefixes else tuple(),
             tuple(), # aggregates
             vlans if read_vlans else tuple(),
             vlan_groups, # phpIPAM: L2 domains
@@ -154,9 +188,27 @@ class NetBox(BaseBackend):
     #
 
 
+    def api_authenticate(self):
+        '''
+        '''
+
+        if self.api_key and not self.token:
+            self.token = self.api_key
+        elif self.api_token and not self.token:
+            self.token = self.api_token
+        else:
+            raise RuntimeError(
+                "unable to determine correct token for API endpoint '{}'".format(
+                    self.api_endpoint,
+                ),
+            )
+
+
     def api_read(self, *args, data=None):
         '''
         '''
+
+        self.api_authenticate()
 
         request = "/".join(args)
 
@@ -164,18 +216,21 @@ class NetBox(BaseBackend):
             "{}/api/{}".format(self.api_endpoint, request),
             auth=HTTPTokenAuth(self.api_token),
             data=data,
-        )
+            verify=self.api_ssl_verify,
+        ).json()
 
 
     def api_write(self, *args, data=None):
         '''
         '''
 
+        self.api_authenticate()
+
         request = "/".join(args)
 
         return requests.post(
             "{}/api/{}".format(self.api_endpoint, request),
-            auth=HTTPTokenAuth(self.api_token),
+            auth=HTTPTokenAuth(self.token),
             data=data,
         )
 
@@ -192,7 +247,7 @@ class NetBox(BaseBackend):
         req = self.api_read("ipam", "roles")
         res = req.json()
 
-        return {data["id"], self.role_get(data) for data in res["results"]}
+        return {data["id"]:self.role_get(data) for data in res["results"]}
 
 
     def ip_addresses_read(self):
@@ -202,7 +257,7 @@ class NetBox(BaseBackend):
         req = self.api_read("ipam", "ip-addresses")
         res = req.json()
 
-        return {data["id"], self.ip_address_get(data) for data in res["results"]}
+        return {data["id"]:self.ip_address_get(data) for data in res["results"]}
 
 
     def prefixes_read(self):
@@ -212,7 +267,7 @@ class NetBox(BaseBackend):
         req = self.api_read("ipam", "prefixes")
         res = req.json()
 
-        return {data["id"], self.prefix_get(data) for data in res["results"]}
+        return {data["id"]:self.prefix_get(data) for data in res["results"]}
 
 
     def aggregates_read(self):
@@ -222,7 +277,7 @@ class NetBox(BaseBackend):
         req = self.api_read("ipam", "aggregates")
         res = req.json()
 
-        return {data["id"], self.aggregate_get(data) for data in res["results"]}
+        return {data["id"]:self.aggregate_get(data) for data in res["results"]}
 
 
     def vlans_read(self):
@@ -232,7 +287,7 @@ class NetBox(BaseBackend):
         req = self.api_read("ipam", "vlans")
         res = req.json()
 
-        return {data["id"], self.vlan_get(data) for data in res["results"]}
+        return {data["id"]:self.vlan_get(data) for data in res["results"]}
 
 
     def vlan_groups_read(self):
@@ -244,7 +299,7 @@ class NetBox(BaseBackend):
         req = self.api_read("ipam", "vlan-groups")
         res = req.json()
 
-        return {data["id"], self.vlan_group_get(data) for data in res["results"]}
+        return {data["id"]:self.vlan_group_get(data) for data in res["results"]}
 
 
     def vrfs_read(self):
@@ -256,7 +311,7 @@ class NetBox(BaseBackend):
         req = self.api_read("ipam", "vlan-groups")
         res = req.json()
 
-        return {data["id"], self.vrf_get(data) for data in res["results"]}
+        return {data["id"]:self.vrf_get(data) for data in res["results"]}
 
 
     #
