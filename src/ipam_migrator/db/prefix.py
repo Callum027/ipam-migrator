@@ -45,7 +45,7 @@ class Prefix(Object):
         VLAN object constructor.
         '''
 
-        super.__init__(prefix_id, name, description)
+        super().__init__(prefix_id, name, description)
 
         self.prefix = ipaddress.ip_network(prefix)
         self.family = 6 if isinstance(self.prefix, ipaddress.IPv6Network) else 4

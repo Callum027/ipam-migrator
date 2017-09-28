@@ -46,12 +46,12 @@ class IPAddress(Object):
         '''
 
         # Initialise database object with ID.
-        super.__init__(address_id, None, description)
+        super().__init__(address_id, None, description)
 
         # Internal fields.
         self.address = ipaddress.ip_address(address)
-        self.family = 6 if isinstance(self.prefix, ipaddress.IPv6Address) else 4
-        self.custom_fields = tuple(custom_fields)
+        self.family = 6 if isinstance(self.address, ipaddress.IPv6Address) else 4
+        self.custom_fields = tuple(custom_fields) if custom_fields else tuple()
 
         # External fields.
         self.status_id = status_id

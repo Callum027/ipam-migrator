@@ -44,7 +44,7 @@ class Aggregate(Object):
         VLAN object constructor.
         '''
 
-        super.__init__(aggregate_id, name, description)
+        super().__init__(aggregate_id, name, description)
 
         self.prefix = ipaddress.ip_network(prefix)
         self.rir = rir

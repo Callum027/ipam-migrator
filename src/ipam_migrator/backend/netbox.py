@@ -29,10 +29,10 @@ import requests
 
 from ipam_migrator.backend.base import BaseBackend
 
-from ipam_migrator.db.role import Role
+from ipam_migrator.db.aggregate import Aggregate
 from ipam_migrator.db.ip_address import IPAddress
 from ipam_migrator.db.prefix import Prefix
-from ipam_migrator.db.aggregate import Aggregate
+from ipam_migrator.db.role import Role
 from ipam_migrator.db.vlan import VLAN
 from ipam_migrator.db.vlan_group import VLANGroup
 from ipam_migrator.db.vrf import VRF
@@ -79,9 +79,12 @@ class NetBox(BaseBackend):
     '''
 
 
-    def __init__(self, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify):
+    def __init__(self, logger, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify):
         '''
         '''
+
+        # Internal fields.
+        self.logger = logger
 
         # Configuration fields.
         self.api_endpoint = api_endpoint

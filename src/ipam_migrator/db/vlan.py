@@ -41,7 +41,7 @@ class VLAN(Object):
         VLAN object constructor.
         '''
 
-        self.__init__(vlan_id, name, description)
+        super().__init__(vlan_id, name, description)
 
         self.vid = vid
         self.status_id = status_id

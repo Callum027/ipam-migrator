@@ -41,7 +41,7 @@ class VLANGroup(Object):
         VLAN group object constructor.
         '''
 
-        self.__init__(vlan_group_id, name, None)
+        super().__init__(vlan_group_id, name, None)
 
         self.slug = slug if slug else name.lower().replace(" ", "-").replace("\t", "-")
         self.status_id = status_id

@@ -29,9 +29,42 @@ import requests
 
 from ipam_migrator.backend.base import BaseBackend
 
+from ipam_migrator.db.database import Database
+from ipam_migrator.db.ip_address import IPAddress
+from ipam_migrator.db.object import Object
+from ipam_migrator.db.prefix import Prefix
+from ipam_migrator.db.vlan import VLAN
+
 from ipam_migrator.exception import APIOptionsError
 from ipam_migrator.exception import APIReadError
 from ipam_migrator.exception import AuthMethodUnsupportedError
+
+
+class Section(Object):
+    '''
+    '''
+
+
+    def __init__(self,
+                 section_id,
+                 name, description,
+                 master_section=None,
+                 permissions=None,
+                 strict_mode=None,
+                 subnet_ordering=None,
+                 order=None,
+                 dns=None):
+        '''
+        '''
+
+        super().__init__(section_id, name, description)
+
+        self.master_section = int(master_section) if master_section is not None else None
+        self.permissions = str(permissions) if permissions is not None else None
+        self.strict_mode = bool(strict_mode) if strict_mode is not None else None
+        self.subnet_ordering = str(subnet_ordering) if subnet_ordering is not None else None
+        self.order = int(order) if order is not None else None
+        self.dns = str(dns) if dns is not None else None
 
 
 class PhpIPAM(BaseBackend):
@@ -39,9 +72,12 @@ class PhpIPAM(BaseBackend):
     '''
 
 
-    def __init__(self, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify):
+    def __init__(self, logger, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify):
         '''
         '''
+
+        # Internal fields.
+        self.logger = logger
 
         # Configuration fields.
         self.api_endpoint = api_endpoint
@@ -59,7 +95,7 @@ class PhpIPAM(BaseBackend):
 
         self.api_ssl_verify = api_ssl_verify
         if not self.api_ssl_verify:
-            # Try to uppress urllib3's InsecureRequestWarning.
+            # Try to suppress urllib3's InsecureRequestWarning.
             # disable_warnings is not available on all urllib3 versions.
             # Only call it if it is available.
             try:
@@ -74,7 +110,6 @@ class PhpIPAM(BaseBackend):
                 disable_warnings(InsecureRequestWarning)
             except ImportError:
                 pass
-
 
         # Runtime fields.
         self.token = None
@@ -97,17 +132,19 @@ class PhpIPAM(BaseBackend):
         '''
         '''
 
-        # Reading VLANs are required for reading prefixes or IP addresses,
-        # even if the VLANs themselves are not requested in the database.
-        if read_vlans or read_prefixes or read_ip_addresses:
-            vlans = self.vlans_read()
-        else:
-            vlans = tuple()
+        # No such thing as roles, services, aggregates or VLAN groups in phpIPAM.
+        read_roles
+        read_services
+        read_aggregates
+        read_vlan_groups
+
+        # Read sections, needed for getting prefixes and IP addresses.
+        sections = self.sections_read() if read_prefixes or read_ip_addresses else None
 
         # Reading prefixes are required for reading IP addresses,
         # even if the VLANs themselves are not requested in the database.
         if read_prefixes or read_ip_addresses:
-            prefixes = self.prefixes_read_from_vlans(vlans)
+            prefixes = self.prefixes_read_from_sections(sections)
         else:
             prefixes = tuple()
 
@@ -116,10 +153,10 @@ class PhpIPAM(BaseBackend):
         else:
             ip_addresses = tuple()
 
-        if read_vlan_groups:
-            vlan_groups = self.vlan_groups_read()
+        if read_vlans:
+            vlans = self.vlans_read()
         else:
-            vlan_groups = tuple()
+            vlans = tuple()
 
         if read_vrfs:
             vrfs = self.vrfs_read()
@@ -127,14 +164,11 @@ class PhpIPAM(BaseBackend):
             vrfs = tuple()
 
         return Database(
-            tuple(), # roles
-            tuple(), # services
-            ip_addresses,
-            prefixes if read_prefixes else tuple(), # phpIPAM: Subnets
-            tuple(), # aggregates
-            vlans if read_vlans else tuple(),
-            vlan_groups, # phpIPAM: L2 domains
-            vrfs,
+            self.name,
+            ip_addresses=ip_addresses,
+            prefixes=prefixes if read_prefixes else None, # phpIPAM: Subnets
+            vlans=vlans if read_vlans else None,
+            vrfs=vrfs if read_vrfs else None,
         )
 
 
@@ -269,38 +303,22 @@ class PhpIPAM(BaseBackend):
         3.1 Sections controller
         '''
 
-        obj = self.api_read("sections")
+        sections = {}
 
-        return obj["data"]
+        self.logger.info("Searching for sections...")
 
+        for data in self.api_read("sections"):
+            i = data["id"]
 
-    def vlans_read(self):
-        '''
-        https://phpipam.net/api/api_documentation/
-        3.5 VLAN controller
-        '''
+            sections[i] = self.section_get(data)
+            self.logger.debug("found section {}".format(sections[i].name))
 
-        # GET command for the VLANs controller is not supported in phpIPAM
-        # versions older than 1.3. It's much faster, though, so use it if
-        # it's available.
-        if "GET" in self.api_controller_methods("vlans")[("vlans",)]:
-            return {data["id"]:self.vlan_get(data) for data in self.api_read("vlans")}
-        else:
-            vlans = {}
-            for i in range(1, 4095):
-                try:
-                    data = self.api_read("vlans", i)
-                    print(data)
-                    vlans[i] = self.vlan_get(data)
-                except APIReadError as err:
-                    if err.api_code == 404 or err.api_message == "Vlan not found":
-                        continue
-                    else:
-                        pass
-            return vlans
+        self.logger.info("Found {} sections.".format(len(sections)))
+
+        return sections
 
 
-    def prefixes_read_from_vlans(self, vlans):
+    def prefixes_read_from_sections(self, sections):
         '''
         https://phpipam.net/api/api_documentation/
         3.2 Subnets controller
@@ -308,41 +326,42 @@ class PhpIPAM(BaseBackend):
 
         prefixes = {}
 
-        for vlan_id in vlans.keys():
-            obj= self.api_read("devices", vlan_id)
+        self.logger.info("Searching for prefixes in found sections...")
 
-            for data in obj["data"]:
-                prefixes[data["id"]] = Prefix(
-                    data["id"], # prefix_id
-                    "{}/{}".format(data["subnet"], data["mask"]), # prefix
-                    name=data["name"],
-                    description=data["description"],
-                    vlan_id=data["vlanId"],
-                    vrf_id=data["vrfId"],
-                    # Unused:
-                    # sectionId - Section identifier (mandatory on add method).
-                    # linked_subnet - Linked IPv6 subnet
-                    # masterSubnetId - Master subnet id for nested subnet (default: 0)
-                    # nameserverId - Id of nameserver to attach to subnet (default: 0)
-                    # showName - Controls weather subnet is displayed as IP address or
-                    #            Name in subnets menu (default: 0)
-                    # permissions - Group permissions for subnet.
-                    # DNSrecursive - Controls if PTR records should be created for subnet
-                    #                (default: 0)
-                    # DNSrecords - Controls weather hostname DNS records are displayed (default: 0)
-                    # allowRequests - Controls if IP requests are allowed for subnet (default: 0)
-                    # scanAgent - Controls which scanagent to use for subnet (default: 1)
-                    # pingSubnet - Controls if subnet should be included in status checks
-                    #            - (default: 0)
-                    # discoverSubnet - Controls if new hosts should be discovered for new host
-                    #                  scans (default: 0)
-                    # isFolder - Controls if we are adding subnet or folder (default: 0)
-                    # isFull - Marks subnet as used (default: 0)
-                    # state - Assignes state (tag) to subnet (default: 1 – Used)
-                    # threshold - Subnet threshold
-                    # location - Location index
-                    # editDate - Date and time of last update
-                )
+        for section_id in sections.keys():
+            try:
+                for data in self.api_read("sections", section_id, "subnets"):
+                    i = data["id"]
+
+                    if not data["subnet"] or not data["mask"]:
+                        self.logger.warning(
+                            "found prefix ID {} with description '{}' "
+                            "but has invalid subnet data, skipping".format(
+                                i,
+                                data["description"],
+                            ),
+                        )
+                        continue
+
+                    prefixes[i] = self.prefix_get(data)
+                    if prefixes[i].description:
+                        self.logger.debug(
+                            "found prefix {} with description '{}'".format(
+                                prefixes[i].prefix,
+                                prefixes[i].description,
+                            ),
+                        )
+                    else:
+                        self.logger.debug("found prefix {}".format(prefix[i].prefix))
+
+            except APIReadError as err:
+                if err.api_message == "No subnets found":
+                    # self.logger.debug("no prefixes found in VLAN {}".format(vlan_id))
+                    continue
+                else:
+                    raise
+
+        self.logger.info("Found {} prefixes.".format(len(prefixes)))
 
         return prefixes
 
@@ -355,32 +374,90 @@ class PhpIPAM(BaseBackend):
 
         ip_addresses = {}
 
-        for prefix_id in prefixes.keys():
-            obj = self.api_read("subnets", prefix_id, "addresses")
+        self.logger.info("Searching for IP addresses used in found prefixes...")
 
-            for data in obj["data"]:
-                ip_addresses[data["id"]] = Address(
-                    data["id"], # address_id
-                    data["ip"], # address
-                    description=data["description"],
-                    # Unused:
-                    # subnetId - Id of subnet address belongs to
-                    # is_gateway - Defines if address is presented as gateway
-                    # hostname - Address hostname
-                    # mac - Mac address
-                    # owner - Address owner
-                    # tag - IP tag (online, offline, ...)
-                    # PTRignore - Controls if PTR should not be created
-                    # PTR - Id of PowerDNS PTR record
-                    # deviceId - Id of device address belongs to
-                    # port - Port
-                    # note - Note
-                    # lastSeen - Date and time address was last seen with ping.
-                    # excludePing - Exclude this address from status update scans (ping)
-                    # editDate - Date and time of last update
-                )
+        for prefix_id in prefixes.keys():
+            try:
+                for data in self.api_read("subnets", prefix_id, "addresses"):
+                    i = data["id"]
+
+                    ip_addresses[i] = self.ip_address_get(data)
+                    if ip_addresses[i].description:
+                        self.logger.debug(
+                            "found IP address {} with description '{}'".format(
+                                ip_addresses[i].address,
+                                ip_addresses[i].description,
+                            ),
+                        )
+                    else:
+                        self.logger.debug("found IP address {}".format(ip_addresses[i].address))
+
+            except APIReadError as err:
+                if err.api_message == "No addresses found":
+                    # self.logger.debug("no addresses found in prefix {}".format(prefix_id))
+                    continue
+                else:
+                    raise
+
+        self.logger.info("Found {} IP addresses.".format(len(ip_addresses)))
 
         return ip_addresses
+
+
+    def vlans_read(self):
+        '''
+        https://phpipam.net/api/api_documentation/
+        3.5 VLAN controller
+        '''
+
+        vlans = {}
+
+        self.logger.info("Searching for VLANs...")
+
+        # GET command for the VLANs controller is not supported in phpIPAM
+        # versions older than 1.3. It's much faster, though, so use it if
+        # it's available.
+        if "GET" in self.api_controller_methods("vlans")[("vlans",)]:
+            for data in self.api_read("vlans"):
+                i = data["id"]
+
+                vlans[i] = self.vlan_get(data)
+                self.logger.debug(
+                    "found VLAN with ID {} with name '{}'".format(
+                        vlans[i].vid,
+                        vlans[i].name
+                    ),
+                )
+
+        else:
+            self.logger.info(
+                "NOTE: 'vlans' controller root 'GET' method not supported, "
+                "using iterative path (consider upgrading to phpIPAM 1.3+)",
+            )
+
+            for i in range(1, 4095):
+                try:
+                    vlans[i] = self.vlan_get(self.api_read("vlans", i))
+                    if vlans[i].name:
+                        self.logger.debug(
+                            "found VLAN {} with name '{}'".format(
+                                vlans[i].vid,
+                                vlans[i].name,
+                            ),
+                        )
+                    else:
+                        self.logger.debug("found VLAN {}".format(vlans[i].vid))
+
+                except APIReadError as err:
+                    if err.api_message == "Vlan not found":
+                        # self.logger.debug("no VLAN found with ID {}".format(i))
+                        continue
+                    else:
+                        raise
+
+        self.logger.info("Found {} VLANs.".format(len(vlans)))
+
+        return vlans
 
 
     def vrfs_read(self):
@@ -421,6 +498,29 @@ class PhpIPAM(BaseBackend):
     ##
     #
 
+
+    def section_get(self, data):
+        '''
+        '''
+
+        return Section(
+            data["id"], # section_id
+            name=data["name"],
+            description=data["description"],
+            master_section=data["masterSection"],
+            permissions=data["permissions"],
+            strict_mode=data["strictMode"],
+            subnet_ordering=data["subnetOrdering"],
+            order=data["order"],
+            dns=data["DNS"],
+            # Unused:
+            # editDate - Date of last edit (yyyy-mm-dd hh:ii:ss)
+            # showVLAN - Show / hide VLANs in subnet list (default: 0)
+            # showVRF - Show / hide VRFs in subnet list(default: 0)
+            # showSupernetOnly - Show only supernets in subnet list(default: 0) 1.3
+        )
+
+
     def vlan_get(self, data):
         '''
         '''
@@ -431,4 +531,66 @@ class PhpIPAM(BaseBackend):
             name=data["name"],
             description=data["description"],
             # Unused: domainId - L2 domain identifier (default 1 – default domain)
+        )
+
+
+    def prefix_get(self, data):
+        '''
+        '''
+
+        return Prefix(
+            data["id"], # prefix_id
+            "{}/{}".format(data["subnet"], data["mask"]), # prefix
+            description=data["description"],
+            vlan_id=data["vlanId"],
+            vrf_id=data["vrfId"],
+            # Unused:
+            # sectionId - Section identifier (mandatory on add method).
+            # linked_subnet - Linked IPv6 subnet
+            # masterSubnetId - Master subnet id for nested subnet (default: 0)
+            # nameserverId - Id of nameserver to attach to subnet (default: 0)
+            # showName - Controls weather subnet is displayed as IP address or
+            #            Name in subnets menu (default: 0)
+            # permissions - Group permissions for subnet.
+            # DNSrecursive - Controls if PTR records should be created for subnet
+            #                (default: 0)
+            # DNSrecords - Controls weather hostname DNS records are displayed (default: 0)
+            # allowRequests - Controls if IP requests are allowed for subnet (default: 0)
+            # scanAgent - Controls which scanagent to use for subnet (default: 1)
+            # pingSubnet - Controls if subnet should be included in status checks
+            #            - (default: 0)
+            # discoverSubnet - Controls if new hosts should be discovered for new host
+            #                  scans (default: 0)
+            # isFolder - Controls if we are adding subnet or folder (default: 0)
+            # isFull - Marks subnet as used (default: 0)
+            # state - Assignes state (tag) to subnet (default: 1 – Used)
+            # threshold - Subnet threshold
+            # location - Location index
+            # editDate - Date and time of last update
+        )
+
+
+    def ip_address_get(self, data):
+        '''
+        '''
+
+        return IPAddress(
+            data["id"], # address_id
+            data["ip"], # address
+            description=data["description"],
+            # Unused:
+            # subnetId - Id of subnet address belongs to
+            # is_gateway - Defines if address is presented as gateway
+            # hostname - Address hostname
+            # mac - Mac address
+            # owner - Address owner
+            # tag - IP tag (online, offline, ...)
+            # PTRignore - Controls if PTR should not be created
+            # PTR - Id of PowerDNS PTR record
+            # deviceId - Id of device address belongs to
+            # port - Port
+            # note - Note
+            # lastSeen - Date and time address was last seen with ping.
+            # excludePing - Exclude this address from status update scans (ping)
+            # editDate - Date and time of last update
         )

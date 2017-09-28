@@ -42,6 +42,27 @@ class Object(object):
         self.description = description
 
 
+    def id_get(self):
+        '''
+        '''
+
+        return self.object_id
+
+
+    def name_get(self):
+        '''
+        '''
+
+        return self.name
+
+
+    def description_get(self):
+        '''
+        '''
+
+        return self.description
+
+
     def object_str(self, *args, **kwargs):
         '''
         '''

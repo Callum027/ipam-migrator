@@ -41,7 +41,7 @@ class Role(Object):
         '''
 
         # Initialise database object with ID.
-        super.__init__(role_id, name, description)
+        super().__init__(role_id, name, description)
 
         # Internal fields.
         self.weight = weight

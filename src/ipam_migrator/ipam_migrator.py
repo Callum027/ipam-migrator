@@ -241,8 +241,8 @@ def backend_create(logger,
     '''
 
     if api_type == "phpipam":
-        return PhpIPAM(api_endpoint, api_auth_method, api_auth_data, api_ssl_verify)
+        return PhpIPAM(logger, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify)
     elif input_api_type == "netbox":
-        return NetBox(api_endpoint, api_auth_method, api_auth_data, api_ssl_verify)
+        return NetBox(logger, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify)
     else:
         raise RuntimeError("unknown {} database backend type '{}'".format(name, api_type))

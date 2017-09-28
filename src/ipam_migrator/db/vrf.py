@@ -41,7 +41,7 @@ class VRF(Object):
         VLAN group object constructor.
         '''
 
-        self.__init__(vrf_id, name, description)
+        super().__init__(vrf_id, name, description)
 
         self.route_distinguisher = route_distinguisher
         self.enforce_unique = enforce_unique
