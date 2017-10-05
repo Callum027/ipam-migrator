@@ -34,7 +34,7 @@ class VLANGroup(Object):
 
     def __init__(self,
                  vlan_group_id,
-                 slug=None,
+                 slug,
                  name=None,
                  status_id=None):
         '''
@@ -43,17 +43,19 @@ class VLANGroup(Object):
 
         super().__init__(vlan_group_id, name, None)
 
-        self.slug = slug if slug else name.lower().replace(" ", "-").replace("\t", "-")
-        self.status_id = status_id
+        self.slug = slug
+        self.status_id = int(status_id) if status_id is not None else None
 
 
-    def __str__(self):
+    def as_dict(self):
         '''
-        Human-readable stringifier method for VLAN groups,
-        suitable for dumping to output.
         '''
 
-        return self.object_str(
-            slug=self.slug,
-            status_id=self.status_id,
-        )
+        return {
+            "id": self.id_get(),
+            "name": self.name,
+            "description": self.description,
+
+            "slug": self.slug,
+            "status_id": self.status_id,
+        }

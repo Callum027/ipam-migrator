@@ -43,17 +43,19 @@ class VLAN(Object):
 
         super().__init__(vlan_id, name, description)
 
-        self.vid = vid
-        self.status_id = status_id
+        self.vid = int(vid)
+        self.status_id = int(status_id) if status_id is not None else None
 
 
-    def __str__(self):
+    def as_dict(self):
         '''
-        Human-readable stringifier method for VLANs,
-        suitable for dumping to output.
         '''
 
-        return self.object_str(
-            vid=self.vid,
-            status_id=self.status_id,
-        )
+        return {
+            "id": self.id_get(),
+            "name": self.name,
+            "description": self.description,
+
+            "vid": self.vid,
+            "status_id": self.status_id,
+        }

@@ -44,16 +44,18 @@ class VRF(Object):
         super().__init__(vrf_id, name, description)
 
         self.route_distinguisher = route_distinguisher
-        self.enforce_unique = enforce_unique
+        self.enforce_unique = bool(enforce_unique)
 
 
-    def __str__(self):
+    def as_dict(self):
         '''
-        Human-readable stringifier method for VRFs,
-        suitable for dumping to output.
         '''
 
-        return self.object_str(
-            route_distinguisher=self.route_distinguisher,
-            enforce_unique=self.enforce_unique,
-        )
+        return {
+            "id": self.id_get(),
+            "name": self.name,
+            "description": self.description,
+
+            "route_distinguisher": self.route_distinguisher,
+            "enforce_unique": self.enforce_unique,
+        }

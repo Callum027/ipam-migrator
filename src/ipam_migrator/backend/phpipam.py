@@ -72,12 +72,11 @@ class PhpIPAM(BaseBackend):
     '''
 
 
-    def __init__(self, logger, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify):
+    def __init__(self, logger, name, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify):
         '''
         '''
 
-        # Internal fields.
-        self.logger = logger
+        super().__init__(logger, name)
 
         # Configuration fields.
         self.api_endpoint = api_endpoint
@@ -146,29 +145,22 @@ class PhpIPAM(BaseBackend):
         if read_prefixes or read_ip_addresses:
             prefixes = self.prefixes_read_from_sections(sections)
         else:
-            prefixes = tuple()
+            prefixes = None
 
         if read_ip_addresses:
             ip_addresses = self.ip_addresses_read_from_prefixes(prefixes)
         else:
-            ip_addresses = tuple()
+            ip_addresses = None
 
-        if read_vlans:
-            vlans = self.vlans_read()
-        else:
-            vlans = tuple()
-
-        if read_vrfs:
-            vrfs = self.vrfs_read()
-        else:
-            vrfs = tuple()
+        vlans = self.vlans_read() if read_vlans else None
+        vrfs = self.vrfs_read() if read_vrfs else None
 
         return Database(
             self.name,
             ip_addresses=ip_addresses,
-            prefixes=prefixes if read_prefixes else None, # phpIPAM: Subnets
-            vlans=vlans if read_vlans else None,
-            vrfs=vrfs if read_vrfs else None,
+            prefixes=prefixes, # phpIPAM: Subnets
+            vlans=vlans,
+            vrfs=vrfs,
         )
 
 
@@ -468,7 +460,7 @@ class PhpIPAM(BaseBackend):
         3.7 VRF controller
         '''
 
-        return tuple()
+        return dict()
 
 
     def devices_read(self):
@@ -479,7 +471,7 @@ class PhpIPAM(BaseBackend):
         3.8 Devices controller
         '''
 
-        return tuple()
+        return dict()
 
 
     #

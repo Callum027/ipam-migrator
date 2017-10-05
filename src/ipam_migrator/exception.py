@@ -34,13 +34,13 @@ class AuthDataNotFoundError(IpamMigratorError):
     '''
     '''
 
-    def __init__(self, database_name, api_type, param_description):
+    def __init__(self, name, api_type, param_description):
         '''
         '''
 
         super().__init__(
             "{} database backend type '{}' expects auth data parameter(s) {}, none found".format(
-                database_name,
+                name,
                 api_type,
                 param_description,
             ),

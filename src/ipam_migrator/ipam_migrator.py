@@ -25,6 +25,8 @@ Main routine.
 
 import argparse
 import logging
+import os
+import stat
 
 from ipam_migrator.backend.netbox import NetBox
 from ipam_migrator.backend.phpipam import PhpIPAM
@@ -114,8 +116,8 @@ def main():
     logger.addHandler(logger_streamhandler)
 
     if log:
-        util.directory_create(os.path.dirname(log))
-        logger_filehandler = logging.FileHandler(log_file)
+        os.makedirs(os.path.dirname(log), exist_ok=True)
+        logger_filehandler = logging.FileHandler(log)
         logger_filehandler.setFormatter(logger_formatter)
         os.chmod(log, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
         logger.addHandler(logger_filehandler)
@@ -212,7 +214,7 @@ def api_data_read(logger, args, name):
 
 
 def api_data_check(logger,
-                   database_name,
+                   name,
                    api_endpoint, api_type,
                    api_auth_method, api_auth_data,
                    api_ssl_verify):
@@ -221,19 +223,19 @@ def api_data_check(logger,
 
     if api_auth_method == "key":
         if not api_auth_data:
-            raise AuthDataNotFoundError(database_name, api_type, "API key")
+            raise AuthDataNotFoundError(name, api_type, "API key")
     elif api_auth_method == "token":
         if not api_auth_data:
-            raise AuthDataNotFoundError(database_name, api_type, "authentication token")
+            raise AuthDataNotFoundError(name, api_type, "authentication token")
     elif api_auth_method == "login":
         if not api_auth_data:
-            raise AuthDataNotFoundError(database_name, api_type, "user name and password")
+            raise AuthDataNotFoundError(name, api_type, "user name and password")
         if len(api_auth_data) < 2:
-            raise AuthDataNotFoundError(database_name, api_type, "password")
+            raise AuthDataNotFoundError(name, api_type, "password")
 
 
 def backend_create(logger,
-                   database_name,
+                   name,
                    api_endpoint, api_type,
                    api_auth_method, api_auth_data,
                    api_ssl_verify):
@@ -241,8 +243,8 @@ def backend_create(logger,
     '''
 
     if api_type == "phpipam":
-        return PhpIPAM(logger, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify)
+        return PhpIPAM(logger, name, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify)
     elif input_api_type == "netbox":
-        return NetBox(logger, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify)
+        return NetBox(logger, name, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify)
     else:
         raise RuntimeError("unknown {} database backend type '{}'".format(name, api_type))

@@ -51,31 +51,32 @@ class IPAddress(Object):
         # Internal fields.
         self.address = ipaddress.ip_address(address)
         self.family = 6 if isinstance(self.address, ipaddress.IPv6Address) else 4
-        self.custom_fields = tuple(custom_fields) if custom_fields else tuple()
+        self.custom_fields = custom_fields.copy() if custom_fields is not None else dict()
 
         # External fields.
-        self.status_id = status_id
-        self.nat_inside_id = nat_inside_id
-        self.nat_outside_id = nat_outside_id
+        self.status_id = int(status_id) if status_id is not None else None
+        self.nat_inside_id = int(nat_inside_id) if nat_inside_id is not None else None
+        self.nat_outside_id = int(nat_outside_id) if nat_outside_id is not None else None
 
         # Grouping fields, in ascending order of scale.
-        self.vrf_id = vrf_id
+        self.vrf_id = int(vrf_id) if vrf_id is not None else None
 
 
-    def __str__(self):
+    def as_dict(self):
         '''
-        Human-readable stringifier method for Internet Protocol (IP) addresses,
-        suitable for dumping to output.
         '''
 
-        return self.object_str(
-            address=self.address,
-            family=self.family,
-            custom_fields=self.custom_fields,
+        return {
+            "id": self.id_get(),
+            "description": self.description,
 
-            status_id=self.status_id,
-            nat_inside_id=self.nat_inside_id,
-            nat_outside_id=self.nat_outside_id,
+            "address": str(self.address),
+            "family": self.family,
+            "custom_fields": self.custom_fields.copy(),
 
-            vrf_id=self.vrf_id,
-        )
+            "status_id": self.status_id,
+            "nat_inside_id": self.nat_inside_id,
+            "nat_outside_id": self.nat_outside_id,
+
+            "vrf_id": self.vrf_id,
+        }

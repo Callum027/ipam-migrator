@@ -34,7 +34,7 @@ class Role(Object):
 
     def __init__(self,
                  role_id,
-                 weight, slug=None,
+                 weight, slug,
                  name=None, description=None):
         '''
         Role object constructor.
@@ -44,14 +44,19 @@ class Role(Object):
         super().__init__(role_id, name, description)
 
         # Internal fields.
-        self.weight = weight
-        self.slug = slug if slug else name.lower().replace(" ", "-").replace("\t", "-")
+        self.weight = int(weight)
+        self.slug = slug
 
 
-    def __str__(self):
+    def as_dict(self):
         '''
-        Human-readable stringifier method for Internet Protocol (IP) subnet prefixes,
-        suitable for dumping to output.
         '''
 
-        return self.object_str(weight=self.weight, slug=self.slug)
+        return {
+            "id": self.id_get(),
+            "name": self.name,
+            "description": self.description,
+
+            "weight": self.weight,
+            "slug": self.slug,
+        }

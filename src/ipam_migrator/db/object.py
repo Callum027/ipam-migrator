@@ -37,7 +37,7 @@ class Object(object):
         Database object constructor.
         '''
 
-        self.object_id = object_id
+        self.object_id = int(object_id)
         self.name = name
         self.description = description
 
@@ -63,21 +63,11 @@ class Object(object):
         return self.description
 
 
-    def object_str(self, *args, **kwargs):
+    def as_dict(self):
         '''
         '''
 
-        params = dict()
-
-        params["id"] = self.id
-        if self.name:
-            params["name"] = self.name
-        if self.description:
-            params["description"] = self.description
-        for key, value in params.values():
-            params[key] = value
-
-        return json.dumps(params)
+        raise NotImplementedError()
 
 
     def __hash__(self):

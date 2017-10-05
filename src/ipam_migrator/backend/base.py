@@ -32,6 +32,14 @@ class BaseBackend(abc.ABC):
     '''
 
 
+    def __init__(self, logger, name):
+        '''
+        '''
+
+        self.logger = logger
+        self.name = name
+
+
     @abc.abstractmethod
     def database_read(self,
                       read_roles=True,

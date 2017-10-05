@@ -50,30 +50,32 @@ class Prefix(Object):
         self.prefix = ipaddress.ip_network(prefix)
         self.family = 6 if isinstance(self.prefix, ipaddress.IPv6Network) else 4
 
-        self.is_pool = is_pool
+        self.is_pool = bool(is_pool) if is_pool is not None else None
 
-        self.role_id = role_id
-        self.status_id = status_id
+        self.role_id = int(role_id) if role_id is not None else None
+        self.status_id = int(status_id) if status_id is not None else None
 
-        self.vlan_id = vlan_id
-        self.vrf_id = vrf_id
+        self.vlan_id = int(vlan_id) if vlan_id is not None else None
+        self.vrf_id = int(vrf_id) if vrf_id is not None else None
 
 
-    def __str__(self):
+    def as_dict(self):
         '''
-        Human-readable stringifier method for Internet Protocol (IP) subnet prefixes,
-        suitable for dumping to output.
         '''
 
-        return self.object_str(
-            prefix=self.prefix,
-            family=self.family,
+        return {
+            "id": self.id_get(),
+            "name": self.name,
+            "description": self.description,
 
-            is_pool=self.is_pool,
+            "prefix": str(self.prefix),
+            "family": self.family,
 
-            role_id=self.role_id,
-            status_id=self.status_id,
+            "is_pool": self.is_pool,
 
-            vlan_id=self.vlan_id,
-            vrf_id=self.vrf_id,
-        )
+            "role_id": self.role_id,
+            "status_id": self.status_id,
+
+            "vlan_id": self.vlan_id,
+            "vrf_id": self.vrf_id,
+        }
