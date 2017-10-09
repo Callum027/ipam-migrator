@@ -173,7 +173,7 @@ def main():
         # If an output database is specified, connect to the output API endpoint,
         # and write the input database to it.
         if use_output:
-            input_backend = backend_create(
+            output_backend = backend_create(
                 logger, "output",
                 output_api_endpoint, output_api_type,
                 output_api_auth_method, output_api_auth_data,
@@ -244,7 +244,7 @@ def backend_create(logger,
 
     if api_type == "phpipam":
         return PhpIPAM(logger, name, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify)
-    elif input_api_type == "netbox":
+    elif api_type == "netbox":
         return NetBox(logger, name, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify)
     else:
         raise RuntimeError("unknown {} database backend type '{}'".format(name, api_type))

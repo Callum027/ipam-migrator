@@ -81,6 +81,7 @@ class PhpIPAM(BaseBackend):
         # Configuration fields.
         self.api_endpoint = api_endpoint
 
+        self.token = None
         self.api_auth_method = api_auth_method
         if self.api_auth_method == "login":
             self.api_user = api_auth_data[0]
@@ -113,6 +114,7 @@ class PhpIPAM(BaseBackend):
         # Runtime fields.
         self.token = None
         self.token_expires = None
+
 
     #
     ##

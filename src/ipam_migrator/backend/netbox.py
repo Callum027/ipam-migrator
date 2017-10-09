@@ -79,16 +79,16 @@ class NetBox(BaseBackend):
     '''
 
 
-    def __init__(self, logger, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify):
+    def __init__(self, name, logger, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify):
         '''
         '''
 
-        # Internal fields.
-        self.logger = logger
+        super().__init__(name, logger)
 
         # Configuration fields.
         self.api_endpoint = api_endpoint
 
+        self.token = None
         self.api_auth_method = api_auth_method
         if self.api_auth_method == "key":
             self.api_key = api_auth_data[0]
@@ -182,8 +182,13 @@ class NetBox(BaseBackend):
         '''
         '''
 
-        roles_old = database.roles
-        roles_new, roles_old_to_new = self.roles_write(roles_old)
+        if database.roles:
+            roles_old = database.roles
+            roles_new, roles_old_to_new = self.roles_write(roles_old)
+
+        if database.ip_addresses:
+            ip_addresses_old = database.ip_addresses
+            ip_addresses_new, ip_addresses_old_to_new = self.ip_addresses_write(ip_addresses_old)
 
 
     #
@@ -229,13 +234,25 @@ class NetBox(BaseBackend):
 
         self.api_authenticate()
 
-        request = "/".join(args)
+        command = "/".join((str(a) for a in args))
 
-        return requests.post(
+        response = requests.post(
             "{}/api/{}".format(self.api_endpoint, request),
             auth=HTTPTokenAuth(self.token),
             data=data,
+            verify=self.api_ssl_verify,
         )
+
+        # TODO: fixup from now on
+        if not response.text:
+            raise APIReadError(response.status_code, "(empty response)")
+
+        obj = response.json()
+
+        if not obj["success"]:
+            raise APIReadError(obj["code"], obj["message"])
+
+        return obj["data"]
 
 
     #
@@ -329,7 +346,7 @@ class NetBox(BaseBackend):
         roles_old_to_new = dict()
         roles_new = dict()
 
-        for role in roles:
+        for role in roles.values():
             # Write object to NetBox.
             req = self.api_write(
                 "ipam",
@@ -348,6 +365,42 @@ class NetBox(BaseBackend):
 
             # Take old ID and new ID, and generate a mapping.
             id_old_new[role.id] = new_role.id
+
+        return (roles_new, roles_old_to_new)
+
+
+    def ip_addresses_write(self, ip_addresses):
+        '''
+        '''
+
+        ip_addresses_old_to_new = dict()
+        ip_addresses_new = dict()
+
+        for ip_address in ip_addresses.values():
+            # Write object to NetBox.
+            req = self.api_write(
+                "ipam",
+                "ip_addresses",
+                data={
+                     "description": ip_address.description,
+                     "address": ip_address.address,
+                     "custom_fields": ip_address.custom_fields,
+                     # "status_id": ip_address.status_id,
+                     # "nat_inside_id": ip_address.nat_inside_id,
+                     # "nat_outside_id": ip_address.nat_outside_id,
+                     # "vrf_id": ip_address.vrf_id,     
+                },
+            )
+
+            # Get returned NetBox object, with new ID.
+            res = req.json()
+            new_ip_address = self.ip_address_get(res["results"][0])
+            new_ip_address[new_ip_address.id] = new_ip_address
+
+            # Take old ID and new ID, and generate a mapping.
+            ip_addresses_old_new[ip_address.id] = new_ip_address.id
+
+            raise RuntimeError("{}".format(str(new_ip_address)))
 
         return (roles_new, roles_old_to_new)
 
