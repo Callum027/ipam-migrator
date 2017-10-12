@@ -137,7 +137,7 @@ def main():
         if args["output_api_data"]:
             use_output = True
             output_api_data = api_data_read(logger, args, "output")
-            output_api_endpoint = input_api_data[0]
+            output_api_endpoint = output_api_data[0]
             output_api_type = output_api_data[1]
             output_api_auth_method = output_api_data[2]
             output_api_auth_data = output_api_data[3]

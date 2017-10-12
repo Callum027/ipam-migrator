@@ -24,6 +24,7 @@ phpIPAM database backend.
 
 
 import datetime
+import json
 
 import requests
 
@@ -37,6 +38,8 @@ from ipam_migrator.db.vlan import VLAN
 from ipam_migrator.db.vlan_group import VLANGroup
 from ipam_migrator.db.vrf import VRF
 
+from ipam_migrator.exception import APIReadError
+from ipam_migrator.exception import APIWriteError
 from ipam_migrator.exception import AuthMethodUnsupportedError
 
 
@@ -221,8 +224,8 @@ class NetBox(BaseBackend):
         request = "/".join(args)
 
         return requests.get(
-            "{}/api/{}".format(self.api_endpoint, request),
-            auth=HTTPTokenAuth(self.api_token),
+            "{}/{}".format(self.api_endpoint, request),
+            auth=HTTPTokenAuth(self.token),
             data=data,
             verify=self.api_ssl_verify,
         ).json()
@@ -237,22 +240,28 @@ class NetBox(BaseBackend):
         command = "/".join((str(a) for a in args))
 
         response = requests.post(
-            "{}/api/{}".format(self.api_endpoint, request),
+            "{}/{}/".format(self.api_endpoint, command),
             auth=HTTPTokenAuth(self.token),
             data=data,
             verify=self.api_ssl_verify,
         )
 
-        # TODO: fixup from now on
         if not response.text:
             raise APIReadError(response.status_code, "(empty response)")
 
         obj = response.json()
 
-        if not obj["success"]:
-            raise APIReadError(obj["code"], obj["message"])
-
-        return obj["data"]
+        if response.status_code == 201: # Created
+            return obj
+        elif response.status_code == 400: # Bad request
+            raise APIWriteError(
+                response.status_code,
+                "bad request:\n{}".format(
+                    "\n".join(("  {}: {}".format(k, v) for k, v in obj.items())),
+                ),
+            )
+        else:
+            raise APIWriteError(response.status_code, "(unhandled error code)")
 
 
     #
@@ -373,36 +382,41 @@ class NetBox(BaseBackend):
         '''
         '''
 
+        self.logger.info("Writing IP addresses...")
+
+        count = 0
+
         ip_addresses_old_to_new = dict()
         ip_addresses_new = dict()
 
         for ip_address in ip_addresses.values():
-            # Write object to NetBox.
-            req = self.api_write(
-                "ipam",
-                "ip_addresses",
-                data={
-                     "description": ip_address.description,
-                     "address": ip_address.address,
-                     "custom_fields": ip_address.custom_fields,
-                     # "status_id": ip_address.status_id,
-                     # "nat_inside_id": ip_address.nat_inside_id,
-                     # "nat_outside_id": ip_address.nat_outside_id,
-                     # "vrf_id": ip_address.vrf_id,     
-                },
+            # Write object to NetBox, and get returned NetBox object, with new ID.
+            new_ip_address = self.ip_address_get(
+                self.api_write(
+                    "ipam",
+                    "ip-addresses",
+                    data={
+                        "description": ip_address.description,
+                        "address": str(ip_address.address),
+                        "custom-fields": ip_address.custom_fields,
+                        # "status_id": ip_address.status_id,
+                        # "nat_inside_id": ip_address.nat_inside_id,
+                        # "nat_outside_id": ip_address.nat_outside_id,
+                        # "vrf_id": ip_address.vrf_id,     
+                    },
+                )
             )
-
-            # Get returned NetBox object, with new ID.
-            res = req.json()
-            new_ip_address = self.ip_address_get(res["results"][0])
             new_ip_address[new_ip_address.id] = new_ip_address
 
             # Take old ID and new ID, and generate a mapping.
             ip_addresses_old_new[ip_address.id] = new_ip_address.id
 
-            raise RuntimeError("{}".format(str(new_ip_address)))
+            raise RuntimeError(json.dumps(new_ip_address.as_dict(), indent=4))
+            count += 1
 
-        return (roles_new, roles_old_to_new)
+        self.logger.info("Wrote {} IP addresses.".format(count))
+
+        return (ip_addresses_new, ip_addresses_old_to_new)
 
 
     #
@@ -430,7 +444,7 @@ class NetBox(BaseBackend):
             data["id"], # ip_address_id
             data["address"], # address
             description=data["description"],
-            custom_fields=data["custom_fields"],
+            custom_fields=data["custom-fields"],
             status_id=data["status"]["value"] if "status" in data else None,
             nat_inside_id=data["nat_inside"]["id"] if "nat_inside" in data else None,
             nat_outside_id=data["nat_outside"]["id"] if "nat_outside" in data else None,

@@ -72,6 +72,19 @@ class AuthMethodUnsupportedError(IpamMigratorError):
         )
 
 
+class APIOptionsError(IpamMigratorError):
+    '''
+    '''
+
+    def __init__(self, code, message):
+        '''
+        '''
+
+        self.api_code = code
+        self.api_message = message
+        super().__init__("ERROR {}: {}".format(self.api_code, self.api_message))
+
+
 class APIReadError(IpamMigratorError):
     '''
     '''
@@ -85,7 +98,7 @@ class APIReadError(IpamMigratorError):
         super().__init__("ERROR {}: {}".format(self.api_code, self.api_message))
 
 
-class APIOptionsError(IpamMigratorError):
+class APIWriteError(IpamMigratorError):
     '''
     '''
 
