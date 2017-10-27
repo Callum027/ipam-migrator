@@ -38,14 +38,14 @@ class Prefix(Object):
                  prefix_id,
                  prefix,
                  is_pool=False,
-                 name=None, description=None,
+                 description=None,
                  role_id=None, status_id=None,
                  vlan_id=None, vrf_id=None):
         '''
         VLAN object constructor.
         '''
 
-        super().__init__(prefix_id, name, description)
+        super().__init__(prefix_id, None, description)
 
         self.prefix = ipaddress.ip_network(prefix)
         self.family = 6 if isinstance(self.prefix, ipaddress.IPv6Network) else 4
@@ -65,7 +65,6 @@ class Prefix(Object):
 
         return {
             "id": self.id_get(),
-            "name": self.name,
             "description": self.description,
 
             "prefix": str(self.prefix),

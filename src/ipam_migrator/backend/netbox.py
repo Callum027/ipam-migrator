@@ -185,13 +185,17 @@ class NetBox(BaseBackend):
         '''
         '''
 
-        if database.roles:
-            roles_old = database.roles
-            roles_new, roles_old_to_new = self.roles_write(roles_old)
+        #if database.roles:
+        #    roles_old = database.roles
+        #    roles_new, roles_old_to_new = self.roles_write(roles_old)
 
-        if database.ip_addresses:
-            ip_addresses_old = database.ip_addresses
-            ip_addresses_new, ip_addresses_old_to_new = self.ip_addresses_write(ip_addresses_old)
+        #if database.ip_addresses:
+        #    ip_addresses_old = database.ip_addresses
+        #    ip_addresses_new, ip_addresses_old_to_new = self.ip_addresses_write(ip_addresses_old)
+
+        if database.prefixes:
+            prefixes_old = database.prefixes
+            prefixes_new, prefixes_old_to_new = self.prefixes_write(prefixes_old)
 
 
     #
@@ -203,6 +207,8 @@ class NetBox(BaseBackend):
         '''
         '''
 
+        if self.token:
+            return
         if self.api_key and not self.token:
             self.token = self.api_key
         elif self.api_token and not self.token:
@@ -398,7 +404,7 @@ class NetBox(BaseBackend):
                     data={
                         "description": ip_address.description,
                         "address": str(ip_address.address),
-                        "custom-fields": ip_address.custom_fields,
+                        "custom_fields": ip_address.custom_fields,
                         # "status_id": ip_address.status_id,
                         # "nat_inside_id": ip_address.nat_inside_id,
                         # "nat_outside_id": ip_address.nat_outside_id,
@@ -406,12 +412,12 @@ class NetBox(BaseBackend):
                     },
                 )
             )
-            new_ip_address[new_ip_address.id] = new_ip_address
+            new_ip_address_id = new_ip_address.id_get()
 
-            # Take old ID and new ID, and generate a mapping.
-            ip_addresses_old_new[ip_address.id] = new_ip_address.id
+            # Add the new IP address to the data maps.
+            ip_addresses_new[new_ip_address_id] = new_ip_address
+            ip_addresses_old_to_new[ip_address.id_get()] = new_ip_address_id
 
-            raise RuntimeError(json.dumps(new_ip_address.as_dict(), indent=4))
             count += 1
 
         self.logger.info("Wrote {} IP addresses.".format(count))
@@ -419,9 +425,110 @@ class NetBox(BaseBackend):
         return (ip_addresses_new, ip_addresses_old_to_new)
 
 
+    def prefixes_write(self, prefixes):
+        '''
+        '''
+
+        self.logger.info("Writing prefixes...")
+
+        count = 0
+
+        prefixes_old_to_new = dict()
+        prefixes_new = dict()
+
+        for prefix in prefixes.values():
+            # Write object to NetBox, and get returned NetBox object, with new ID.
+            new_prefix = self.prefix_get(
+                self.api_write(
+                    "ipam",
+                    "prefixes",
+                    data={
+                        "description": prefix.description,
+                        "prefix": str(prefix.prefix),
+                        "is_pool": prefix.is_pool,
+                        # "role_id": prefix.role_id
+                        # "status_id": prefix.status_id,
+                        # "vlan_id": prefix.vlan_id,
+                        # "vrf_id": prefix.vrf_id,     
+                    },
+                )
+            )
+            new_prefix_id = new_prefix.id_get()
+
+            # Add the new IP address to the data maps.
+            prefixes_new[new_prefix_id] = new_prefix
+            prefixes_old_to_new[prefix.id_get()] = new_prefix_id
+
+            count += 1
+
+        self.logger.info("Wrote {} prefixes.".format(count))
+
+        return (prefixes_new, prefixes_old_to_new)
+
+
+    def vlans_write(self, vlans):
+        '''
+        '''
+
+        self.logger.info("Writing VLANs...")
+
+        count = 0
+
+        vlans_old_to_new = dict()
+        vlans_new = dict()
+
+        for vlan in vlans.values():
+            # Write object to NetBox, and get returned NetBox object, with new ID.
+            new_vlan = self.vlan_get(
+                self.api_write(
+                    "ipam",
+                    "vlans",
+                    data={
+                        "name": vlan.name,
+                        "description": vlan.description,
+                        "vid": vlan.vid,
+                        # "status_id": vlan.status_id,    
+                    },
+                )
+            )
+            new_vlan_id = new_vlan.id_get()
+
+            # Add the new IP address to the data maps.
+            vlans_new[new_vlan_id] = new_vlan
+            vlans_old_to_new[vlan.id_get()] = new_vlan_id
+
+            count += 1
+
+        self.logger.info("Wrote {} VLANs.".format(count))
+
+        return (prefixes_new, prefixes_old_to_new)
+
+
     #
     ##
     #
+
+
+    def value_get(self, data, key, subkey=None):
+        '''
+        '''
+
+        if subkey:
+            return data[key][subkey] if key in data and data[key] is not None else None
+        else:
+            return data[key] if key in data else None
+
+
+    def status_id_get(self, data):
+        '''
+        '''
+
+        if "status" in data:
+            if isinstance(data["status"], dict):
+                return data["status"]["value"]
+            else:
+                return int(data["status"])
+        return None
 
 
     def role_get(self, data):
@@ -442,15 +549,13 @@ class NetBox(BaseBackend):
 
         return IPAddress(
             data["id"], # ip_address_id
-            data["address"], # address
+            data["address"].split("/")[0], # address
             description=data["description"],
-            custom_fields=data["custom-fields"],
-            status_id=data["status"]["value"] if "status" in data else None,
-            nat_inside_id=data["nat_inside"]["id"] if "nat_inside" in data else None,
-            nat_outside_id=data["nat_outside"]["id"] if "nat_outside" in data else None,
-            interface_id=data["interface"]["id"] if "interface" in data else None,
-            vrf_id=data["vrf"]["id"] if "vrf" in data else None,
-            tenant_id=data["tenant"]["id"] if "tenant" in data else None,
+            custom_fields=self.value_get(data, "custom_fields"),
+            status_id=self.status_id_get(data),
+            nat_inside_id=self.value_get(data, "nat_inside", "id"),
+            nat_outside_id=self.value_get(data, "nat_outside", "id"),
+            vrf_id=self.value_get(data, "vrf", "id"),
         )
 
 
@@ -458,19 +563,17 @@ class NetBox(BaseBackend):
         '''
         '''
 
+        self.logger.debug(json.dumps(data))
+
         return Prefix(
             data["id"], # prefix_id
             data["prefix"], # prefix
             is_pool=data["is_pool"],
-            custom_fields=data["custom_fields"],
-            name=data["name"],
             description=data["description"],
-            role_id=data["role"]["id"] if "role" in data else None,
-            status_id=data["status"]["value"] if "status" in data else None,
-            vlan_id=data["vlan"]["id"] if "vlan" in data else None,
-            vrf_id=data["vrf"]["id"] if "vrf" in data else None,
-            tenant_id=data["tenant"]["id"] if "tenant" in data else None,
-            site_id=data["site"]["id"] if "site" in data else None,
+            role_id=self.value_get(data, "role", "id"),
+            status_id=self.status_id_get(data),
+            vlan_id=self.value_get(data, "vlan", "id"),
+            vrf_id=self.value_get(data, "vrf", "id"),
         )
 
 
@@ -496,10 +599,10 @@ class NetBox(BaseBackend):
             data["vid"], # vid
             name=data["name"],
             description=data["description"],
-            status_id=data["status"]["value"] if "status" in data else None,
-            group_id=data["group"]["id"] if "status" in data else None,
-            tenant_id=data["tenant"]["id"] if "tenant" in data else None,
-            site_id=data["site"]["id"] if "site" in data else None,
+            status_id=self.status_id_get(data),
+            group_id=self.value_get(data, "group", "id"),
+            tenant_id=self.value_get(data, "tenant", "id"),
+            site_id=self.value_get(data, "site", "id"),
         )
 
 
