@@ -39,7 +39,6 @@ class IPAddress(Object):
                  address,
                  description=None,
                  custom_fields=None,
-                 status_id=None, nat_inside_id=None, nat_outside_id=None,
                  vrf_id=None):
         '''
         VLAN object constructor.
@@ -53,13 +52,18 @@ class IPAddress(Object):
         self.family = 6 if isinstance(self.address, ipaddress.IPv6Address) else 4
         self.custom_fields = custom_fields.copy() if custom_fields is not None else dict()
 
-        # External fields.
-        self.status_id = int(status_id) if status_id is not None else None
-        self.nat_inside_id = int(nat_inside_id) if nat_inside_id is not None else None
-        self.nat_outside_id = int(nat_outside_id) if nat_outside_id is not None else None
-
         # Grouping fields, in ascending order of scale.
         self.vrf_id = int(vrf_id) if vrf_id is not None else None
+
+
+    def __str__(self):
+        '''
+        '''
+
+        if self.description:
+            return "IP address {} with description '{}'".format(self.address, self.description)
+        else:
+            return "IP address {}".format(self.address)
 
 
     def as_dict(self):
@@ -73,10 +77,6 @@ class IPAddress(Object):
             "address": str(self.address),
             "family": self.family,
             "custom_fields": self.custom_fields.copy(),
-
-            "status_id": self.status_id,
-            "nat_inside_id": self.nat_inside_id,
-            "nat_outside_id": self.nat_outside_id,
 
             "vrf_id": self.vrf_id,
         }

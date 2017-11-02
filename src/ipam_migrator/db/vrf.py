@@ -47,6 +47,18 @@ class VRF(Object):
         self.enforce_unique = bool(enforce_unique)
 
 
+    def __str__(self):
+        '''
+        '''
+
+        if self.name:
+            return "VRF {} with name '{}'".format(self.id_get(), self.name)
+        if self.description:
+            return "VRF {} with description '{}'".format(self.id_get(), self.description)
+        else:
+            return "VRF {}".format(self.id_get())
+
+
     def as_dict(self):
         '''
         '''

@@ -35,8 +35,7 @@ class VLAN(Object):
     def __init__(self,
                  vlan_id,
                  vid,
-                 name=None, description=None,
-                 status_id=None):
+                 name=None, description=None):
         '''
         VLAN object constructor.
         '''
@@ -44,7 +43,18 @@ class VLAN(Object):
         super().__init__(vlan_id, name, description)
 
         self.vid = int(vid)
-        self.status_id = int(status_id) if status_id is not None else None
+
+
+    def __str__(self):
+        '''
+        '''
+
+        if self.name:
+            return "VLAN {} with name '{}'".format(self.vid, self.name)
+        elif self.description:
+            return "VLAN {} with description '{}'".format(self.vid, self.description)
+        else:
+            return "VLAN {}".format(self.vid)
 
 
     def as_dict(self):
@@ -57,5 +67,4 @@ class VLAN(Object):
             "description": self.description,
 
             "vid": self.vid,
-            "status_id": self.status_id,
         }

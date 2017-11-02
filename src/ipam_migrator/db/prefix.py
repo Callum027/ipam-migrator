@@ -39,7 +39,6 @@ class Prefix(Object):
                  prefix,
                  is_pool=False,
                  description=None,
-                 role_id=None, status_id=None,
                  vlan_id=None, vrf_id=None):
         '''
         VLAN object constructor.
@@ -52,11 +51,18 @@ class Prefix(Object):
 
         self.is_pool = bool(is_pool) if is_pool is not None else None
 
-        self.role_id = int(role_id) if role_id is not None else None
-        self.status_id = int(status_id) if status_id is not None else None
-
         self.vlan_id = int(vlan_id) if vlan_id is not None else None
         self.vrf_id = int(vrf_id) if vrf_id is not None else None
+
+
+    def __str__(self):
+        '''
+        '''
+
+        if self.description:
+            return "prefix {} with description '{}'".format(self.prefix, self.description)
+        else:
+            return "prefix {}".format(self.prefix)
 
 
     def as_dict(self):

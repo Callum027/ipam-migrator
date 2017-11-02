@@ -35,13 +35,9 @@ class Database(object):
 
     def __init__(self,
                  name,
-                 roles=None,
-                 services=None,
                  ip_addresses=None,
                  prefixes=None,
-                 aggregates=None,
                  vlans=None,
-                 vlan_groups=None,
                  vrfs=None):
         '''
         Database object constructor.
@@ -49,13 +45,9 @@ class Database(object):
 
         self.name = name
 
-        self.roles = copy.deepcopy(roles) if roles is not None else dict()
-        self.services = copy.deepcopy(services) if services is not None else dict()
         self.ip_addresses = copy.deepcopy(ip_addresses) if ip_addresses is not None else dict()
         self.prefixes = copy.deepcopy(prefixes) if prefixes is not None else dict()
-        self.aggregates = copy.deepcopy(aggregates) if aggregates is not None else dict()
         self.vlans = copy.deepcopy(vlans) if vlans is not None else dict()
-        self.vlan_groups = copy.deepcopy(vlan_groups) if vlan_groups is not None else dict()
         self.vrfs = copy.deepcopy(vrfs) if vrfs is not None else dict()
 
 
@@ -68,13 +60,9 @@ class Database(object):
         return json.dumps(
             {
                 "name": self.name,
-                "roles": [role.as_dict() for role in self.roles.values()],
-                "services": [service.as_dict() for service in self.services.values()],
                 "ip_addresses": [ip.as_dict() for ip in self.ip_addresses.values()],
                 "prefixes": [prefix.as_dict() for prefix in self.prefixes.values()],
-                "aggregates": [aggregate.as_dict() for aggregate in self.aggregates.values()],
                 "vlans": [vlans.as_dict() for vlans in self.vlans.values()],
-                "vlan_groups": [vlan_group.as_dict() for vlan_group in self.vlan_groups.values()],
                 "vrfs": [vrf.as_dict() for vrf in self.vrfs.values()],
             },
         )

@@ -122,22 +122,12 @@ class PhpIPAM(BaseBackend):
 
 
     def database_read(self,
-                      read_roles=True,
-                      read_services=True,
                       read_ip_addresses=True,
                       read_prefixes=True,
-                      read_aggregates=True,
                       read_vlans=True,
-                      read_vlan_groups=True,
                       read_vrfs=True):
         '''
         '''
-
-        # No such thing as roles, services, aggregates or VLAN groups in phpIPAM.
-        read_roles
-        read_services
-        read_aggregates
-        read_vlan_groups
 
         # Read sections, needed for getting prefixes and IP addresses.
         sections = self.sections_read() if read_prefixes or read_ip_addresses else None
