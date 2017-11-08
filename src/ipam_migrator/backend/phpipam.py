@@ -67,6 +67,31 @@ class Section(Object):
         self.dns = str(dns) if dns is not None else None
 
 
+    def __str__(self):
+        '''
+        '''
+
+        return "section {}".format(self.name)
+
+
+    def as_dict(self):
+        '''
+        '''
+
+        return {
+            "id": self.id_get(),
+            "name": self.name,
+            "description": self.description,
+
+            "master_section": self.master_section,
+            "permissions": self.permissions,
+            "strict_mode": self.strict_mode,
+            "subnet_ordering": self.subnet_ordering,
+            "order": self.order,
+            "dns": self.dns,
+        }
+
+
 class PhpIPAM(BaseBackend):
     '''
     '''
@@ -114,53 +139,6 @@ class PhpIPAM(BaseBackend):
         # Runtime fields.
         self.token = None
         self.token_expires = None
-
-
-    #
-    ##
-    #
-
-
-    def database_read(self,
-                      read_ip_addresses=True,
-                      read_prefixes=True,
-                      read_vlans=True,
-                      read_vrfs=True):
-        '''
-        '''
-
-        # Read sections, needed for getting prefixes and IP addresses.
-        sections = self.sections_read() if read_prefixes or read_ip_addresses else None
-
-        # Reading prefixes are required for reading IP addresses,
-        # even if the VLANs themselves are not requested in the database.
-        if read_prefixes or read_ip_addresses:
-            prefixes = self.prefixes_read_from_sections(sections)
-        else:
-            prefixes = None
-
-        if read_ip_addresses:
-            ip_addresses = self.ip_addresses_read_from_prefixes(prefixes)
-        else:
-            ip_addresses = None
-
-        vlans = self.vlans_read() if read_vlans else None
-        vrfs = self.vrfs_read() if read_vrfs else None
-
-        return Database(
-            self.name,
-            ip_addresses=ip_addresses,
-            prefixes=prefixes, # phpIPAM: Subnets
-            vlans=vlans,
-            vrfs=vrfs,
-        )
-
-
-    def database_write(self, database):
-        '''
-        '''
-
-        pass
 
 
     #
@@ -281,6 +259,41 @@ class PhpIPAM(BaseBackend):
     #
 
 
+    def database_read(self,
+                      read_ip_addresses=True,
+                      read_prefixes=True,
+                      read_vlans=True,
+                      read_vrfs=True):
+        '''
+        '''
+
+        # Read sections, needed for getting prefixes and IP addresses.
+        sections = self.sections_read() if read_prefixes or read_ip_addresses else None
+
+        # Reading prefixes are required for reading IP addresses,
+        # even if the VLANs themselves are not requested in the database.
+        if read_prefixes or read_ip_addresses:
+            prefixes = self.prefixes_read_from_sections(sections)
+        else:
+            prefixes = None
+
+        if read_ip_addresses:
+            ip_addresses = self.ip_addresses_read_from_prefixes(prefixes)
+        else:
+            ip_addresses = None
+
+        vlans = self.vlans_read() if read_vlans else None
+        vrfs = self.vrfs_read() if read_vrfs else None
+
+        return Database(
+            self.name,
+            ip_addresses=ip_addresses,
+            prefixes=prefixes, # phpIPAM: Subnets
+            vlans=vlans,
+            vrfs=vrfs,
+        )
+
+
     def sections_read(self):
         '''
         https://phpipam.net/api/api_documentation/
@@ -295,7 +308,7 @@ class PhpIPAM(BaseBackend):
             i = data["id"]
 
             sections[i] = self.section_get(data)
-            self.logger.debug("found section {}".format(sections[i].name))
+            self.logger.debug("found {}".format(sections[i]))
 
         self.logger.info("Found {} sections.".format(len(sections)))
 
@@ -328,19 +341,10 @@ class PhpIPAM(BaseBackend):
                         continue
 
                     prefixes[i] = self.prefix_get(data)
-                    if prefixes[i].description:
-                        self.logger.debug(
-                            "found prefix {} with description '{}'".format(
-                                prefixes[i].prefix,
-                                prefixes[i].description,
-                            ),
-                        )
-                    else:
-                        self.logger.debug("found prefix {}".format(prefix[i].prefix))
+                  　　self.logger.debug("found {}".format(prefixes[i])) 
 
             except APIReadError as err:
                 if err.api_message == "No subnets found":
-                    # self.logger.debug("no prefixes found in VLAN {}".format(vlan_id))
                     continue
                 else:
                     raise
@@ -364,21 +368,11 @@ class PhpIPAM(BaseBackend):
             try:
                 for data in self.api_read("subnets", prefix_id, "addresses"):
                     i = data["id"]
-
                     ip_addresses[i] = self.ip_address_get(data)
-                    if ip_addresses[i].description:
-                        self.logger.debug(
-                            "found IP address {} with description '{}'".format(
-                                ip_addresses[i].address,
-                                ip_addresses[i].description,
-                            ),
-                        )
-                    else:
-                        self.logger.debug("found IP address {}".format(ip_addresses[i].address))
+                    self.logger.debug("found {}".format(ip_addresses[i]))
 
             except APIReadError as err:
                 if err.api_message == "No addresses found":
-                    # self.logger.debug("no addresses found in prefix {}".format(prefix_id))
                     continue
                 else:
                     raise
@@ -404,14 +398,8 @@ class PhpIPAM(BaseBackend):
         if "GET" in self.api_controller_methods("vlans")[("vlans",)]:
             for data in self.api_read("vlans"):
                 i = data["id"]
-
                 vlans[i] = self.vlan_get(data)
-                self.logger.debug(
-                    "found VLAN with ID {} with name '{}'".format(
-                        vlans[i].vid,
-                        vlans[i].name
-                    ),
-                )
+                self.logger.debug("found {}".format(vlans[i]))
 
         else:
             self.logger.info(
@@ -422,19 +410,9 @@ class PhpIPAM(BaseBackend):
             for i in range(1, 4095):
                 try:
                     vlans[i] = self.vlan_get(self.api_read("vlans", i))
-                    if vlans[i].name:
-                        self.logger.debug(
-                            "found VLAN {} with name '{}'".format(
-                                vlans[i].vid,
-                                vlans[i].name,
-                            ),
-                        )
-                    else:
-                        self.logger.debug("found VLAN {}".format(vlans[i].vid))
-
+                    self.logger.debug("found {}".format(vlans[i]))
                 except APIReadError as err:
                     if err.api_message == "Vlan not found":
-                        # self.logger.debug("no VLAN found with ID {}".format(i))
                         continue
                     else:
                         raise
@@ -455,23 +433,47 @@ class PhpIPAM(BaseBackend):
         return dict()
 
 
-    def devices_read(self):
-        '''
-        Not implemented.
-
-        https://phpipam.net/api/api_documentation/
-        3.8 Devices controller
-        '''
-
-        return dict()
-
-
     #
     ##
     #
 
 
+    def database_write(self, database):
+        '''
+        '''
+
+        raise NotImplementedError()
+
+
     def sections_write(self):
+        '''
+        '''
+
+        raise NotImplementedError()
+
+
+    def ip_addresses_write(self):
+        '''
+        '''
+
+        raise NotImplementedError()
+
+
+    def prefixes_write(self):
+        '''
+        '''
+
+        raise NotImplementedError()
+
+
+    def vlans_write(self):
+        '''
+        '''
+
+        raise NotImplementedError()
+
+
+    def vrfs_write(self):
         '''
         '''
 
@@ -578,3 +580,10 @@ class PhpIPAM(BaseBackend):
             # excludePing - Exclude this address from status update scans (ping)
             # editDate - Date and time of last update
         )
+
+
+    def vrf_get(self, data):
+        '''
+        '''
+
+        raise NotImplementedError()

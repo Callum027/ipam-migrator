@@ -38,7 +38,7 @@ from ipam_migrator.db.vlan import VLAN
 from ipam_migrator.db.vlan_group import VLANGroup
 from ipam_migrator.db.vrf import VRF
 
-from ipam_migrator.exception import APIReadError
+from ipam_migrator.exception import APIGetError
 from ipam_migrator.exception import APIWriteError
 from ipam_migrator.exception import AuthMethodUnsupportedError
 
@@ -130,79 +130,6 @@ class NetBox(BaseBackend):
     #
 
 
-    def database_read(self,
-                      read_roles=True,
-                      read_ip_addresses=True,
-                      read_prefixes=True,
-                      read_aggregates=True,
-                      read_vlans=True,
-                      read_vlan_groups=True,
-                      read_vrfs=True):
-        '''
-        '''
-
-        # Reading VLANs are required for reading prefixes or IP addresses,
-        # even if the VLANs themselves are not requested in the database.
-        if read_vlans or read_prefixes or read_ip_addresses:
-            vlans = self.vlans_read()
-        else:
-            vlans = tuple()
-
-        # Reading prefixes are required for reading IP addresses,
-        # even if the VLANs themselves are not requested in the database.
-        if read_prefixes or read_ip_addresses:
-            prefixes = self.prefixes_read_from_vlans(vlans)
-        else:
-            prefixes = tuple()
-
-        if read_ip_addresses:
-            ip_addresses = self.ip_addresses_read_from_prefixes(prefixes)
-        else:
-            ip_addresses = tuple()
-
-        if read_vlan_groups:
-            vlan_groups = self.vlan_groups_read()
-        else:
-            vlan_groups = tuple()
-
-        if read_vrfs:
-            vrfs = self.vrfs_read()
-        else:
-            vrfs = tuple()
-
-        return Database(
-            roles,
-            ip_addresses,
-            prefixes if read_prefixes else tuple(),
-            tuple(), # aggregates
-            vlans if read_vlans else tuple(),
-            vlan_groups, # phpIPAM: L2 domains
-            vrfs,
-        )
-
-
-    def database_write(self, database):
-        '''
-        '''
-
-        if database.ip_addresses:
-            ip_addresses_old = database.ip_addresses
-            ip_addresses_new, ip_addresses_old_to_new = self.ip_addresses_write(ip_addresses_old)
-
-        if database.prefixes:
-            prefixes_old = database.prefixes
-            prefixes_new, prefixes_old_to_new = self.prefixes_write(prefixes_old)
-
-        if database.vlans:
-            vlans_old = database.vlans
-            vlans_new, vlans_old_to_new = self.vlans_write(vlans_old)
-
-
-    #
-    ##
-    #
-
-
     def api_authenticate(self):
         '''
         '''
@@ -221,37 +148,13 @@ class NetBox(BaseBackend):
             )
 
 
-    def api_read(self, *args, data=None):
+    def api_get(self, uri):
         '''
         '''
 
         self.api_authenticate()
 
-        request = "/".join(args)
-
-        return requests.get(
-            "{}/{}".format(self.api_endpoint, request),
-            auth=HTTPTokenAuth(self.token),
-            data=data,
-            verify=self.api_ssl_verify,
-        ).json()
-
-
-    def api_search(self, *args, **kwargs):
-        '''
-        '''
-
-        self.api_authenticate()
-
-        link = "/".join(args)
-        params = "&".join(["{}={}".format(k, v) for k, v in kwargs.values()])
-        command = "{}/?{}".format(link, params)
-
-        response = requests.get(
-            "{}/{}".format(self.api_endpoint, command),
-            auth=HTTPTokenAuth(self.token),
-            verify=self.api_ssl_verify,
-        )
+        response = requests.get(uri, auth=HTTPTokenAuth(self.token), verify=self.api_ssl_verify)
 
         if not response.text:
             raise APIReadError(response.status_code, "(empty response)")
@@ -259,18 +162,36 @@ class NetBox(BaseBackend):
         obj = response.json()
 
         if response.status_code == 200: # OK
-            return obj
-        elif response.status_code == 404: # Not Found
-            return None
+            return obj["results"]
         elif response.status_code == 400: # Bad request
-            raise APIWriteError(
+            raise APIGetError(
                 response.status_code,
                 "bad request:\n{}".format(
                     "\n".join(("  {}: {}".format(k, v) for k, v in obj.items())),
                 ),
             )
         else:
-            raise APIWriteError(response.status_code, "(unhandled error code)")
+            raise APIGetError(response.status_code, "(unhandled error code)")
+
+
+    def api_read(self, *args, data=None):
+        '''
+        '''
+
+        command = "/".join((str(a) for a in args))
+
+        return self.api_get("{}/{}/".format(self.api_endpoint, command))
+
+
+    def api_search(self, *args, **kwargs):
+        '''
+        '''
+
+        link = "/".join(args)
+        params = "&".join(["{}={}".format(k, v) for k, v in kwargs.items()])
+        command = "{}/?{}".format(link, params)
+
+        return self.api_get("{}/{}".format(self.api_endpoint, command))
 
 
     def api_write(self, *args, data=None):
@@ -295,6 +216,8 @@ class NetBox(BaseBackend):
 
         obj = response.json()
 
+        if response.status_code == 200: # OK
+            return obj
         if response.status_code == 201: # Created
             return obj
         elif response.status_code == 400: # Bad request
@@ -327,44 +250,26 @@ class NetBox(BaseBackend):
     #
 
 
-    def roles_read(self):
+    def database_read(self,
+                      read_ip_addresses=True,
+                      read_prefixes=True,
+                      read_vlans=True,
+                      read_vrfs=True):
         '''
         '''
 
-        req = self.api_read("ipam", "roles")
-        res = req.json()
+        vlans = self.vlans_read() if read_vlans else None
+        vrfs = self.vrfs_read() if read_vrfs else None
+        prefixes = self.prefixes_read() if read_prefixes else None
+        ip_addresses = self.ip_addresses_read() if read_ip_addresses else None
 
-        return {data["id"]:self.role_get(data) for data in res["results"]}
-
-
-    def ip_addresses_read(self):
-        '''
-        '''
-
-        req = self.api_read("ipam", "ip-addresses")
-        res = req.json()
-
-        return {data["id"]:self.ip_address_get(data) for data in res["results"]}
-
-
-    def prefixes_read(self):
-        '''
-        '''
-
-        req = self.api_read("ipam", "prefixes")
-        res = req.json()
-
-        return {data["id"]:self.prefix_get(data) for data in res["results"]}
-
-
-    def aggregates_read(self):
-        '''
-        '''
-
-        req = self.api_read("ipam", "aggregates")
-        res = req.json()
-
-        return {data["id"]:self.aggregate_get(data) for data in res["results"]}
+        return Database(
+            self.name,
+            ip_addresses=ip_addresses,
+            prefixes=prefixes,
+            vlans=vlans,
+            vrfs=vrfs,
+        )
 
 
     def vlans_read(self):
@@ -377,28 +282,36 @@ class NetBox(BaseBackend):
         return {data["id"]:self.vlan_get(data) for data in res["results"]}
 
 
-    def vlan_groups_read(self):
-        '''
-        '''
-
-        vlan_groups = {}
-
-        req = self.api_read("ipam", "vlan-groups")
-        res = req.json()
-
-        return {data["id"]:self.vlan_group_get(data) for data in res["results"]}
-
-
     def vrfs_read(self):
         '''
         '''
 
         vrfs = {}
 
-        req = self.api_read("ipam", "vlan-groups")
+        req = self.api_read("ipam", "vrfs")
         res = req.json()
 
         return {data["id"]:self.vrf_get(data) for data in res["results"]}
+
+
+    def prefixes_read(self):
+        '''
+        '''
+
+        req = self.api_read("ipam", "prefixes")
+        res = req.json()
+
+        return {data["id"]:self.prefix_get(data) for data in res["results"]}
+
+
+    def ip_addresses_read(self):
+        '''
+        '''
+
+        req = self.api_read("ipam", "ip-addresses")
+        res = req.json()
+
+        return {data["id"]:self.ip_address_get(data) for data in res["results"]}
 
 
     #
@@ -406,27 +319,74 @@ class NetBox(BaseBackend):
     #
 
 
+    def database_write(self, database):
+        '''
+        '''
+
+        if database.vlans:
+            vlans_old = database.vlans
+            vlans_new, vlans_old_to_new = self.vlans_write(vlans_old)
+        else:
+            vlans_old = {}
+            vlans_new = {}
+            vlans_old_to_new = {}
+
+        if database.vrfs:
+            vrfs_old = database.vrfs
+            vrfs_new, vrfs_old_to_new = self.vrfs_write(vrfs_old)
+        else:
+            vrfs_old = {}
+            vrfs_new = {}
+            vrfs_old_to_new = {}
+
+        if database.prefixes:
+            prefixes_old = database.prefixes
+            prefixes_new, prefixes_old_to_new = self.prefixes_write(
+                prefixes_old,
+                vlans_new, vlans_old_to_new,
+                vrfs_new, vrfs_old_to_new,
+            )
+        else:
+            prefixes_old = {}
+            prefixes_new = {}
+            prefixes_old_to_new = {}
+
+        if database.ip_addresses:
+            ip_addresses_old = database.ip_addresses
+            ip_addresses_new, ip_addresses_old_to_new = self.ip_addresses_write(
+                ip_addresses_old,
+                vrfs_new, vrfs_old_to_new,
+            )
+        else:
+            ip_addresses_old = {}
+            ip_addresses_new = {}
+            ip_addresses_old_to_new = {}
+
+
     def obj_write(self,
-                  obj,
                   obj_type,
                   obj_search_params,
-                  obj_get,
-                  obj_data_get):
+                  obj_data,
+                  obj_get_func):
         '''
         '''
 
         # Check if an equivalent object already exists on NetBox.
         # If there is one, we will overwrite its data and reuse its ID
         # with a PUT request, otherwise upload a new object using a POST request.
-        current_obj = self.api_search("api", obj_type, **obj_search_params)
+        current_objs = self.api_search("ipam", obj_type, **obj_search_params)
+        current_obj = current_objs[0] if current_objs else None
 
-        if current_obj is not None:
-            new_obj_data = self.api_put("ipam", obj_type, obj.id_get(), data=obj_data_get(obj))
+        if current_obj:
+            new_obj_data = self.api_put(
+                "ipam", obj_type, current_obj["id"],
+                data=obj_data,
+            )
         else:
-            new_obj_data = self.api_post("ipam", obj_type, data=obj_data_get(obj))
-        new_obj = obj_get(new_obj_data)
+            new_obj_data = self.api_post("ipam", obj_type, data=obj_data)
+        new_obj = obj_get_func(new_obj_data)
 
-        if current_obj is not None:
+        if current_obj:
             self.logger.debug("updated {}".format(new_obj))
         else:
             self.logger.debug("wrote {}".format(new_obj))
@@ -439,79 +399,6 @@ class NetBox(BaseBackend):
         '''
 
         raise NotImplementedError()
-
-
-    def ip_addresses_write(self, ip_addresses):
-        '''
-        '''
-
-        self.logger.info("Writing IP addresses...")
-
-        count = 0
-
-        ip_addresses_new = dict()
-        ip_addresses_old_to_new = dict()
-
-        for ip_address in ip_addresses.values():
-            new_ip_address = self.obj_write(
-                ip_address,
-                "ip-addresses",
-                {"q": str(ip_address.address)},
-                self.ip_address_get,
-                lambda ip_address: {
-                    "description": ip_address.description,
-                    "address": str(ip_address.address),
-                    "custom_fields": ip_address.custom_fields,
-                    # "vrf_id": ip_address.vrf_id,
-                },
-            )
-
-            new_ip_address_id = new_ip_address.id_get()
-            ip_addresses_new[new_ip_address_id] = new_ip_address
-            ip_addressess_old_to_new[ip_address.id_get()] = new_ip_address_id
-
-            count += 1
-
-        self.logger.info("Wrote {} IP addresses.".format(count))
-
-        return (ip_addresses_new, ip_addresses_old_to_new)
-
-
-    def prefixes_write(self, prefixes):
-        '''
-        '''
-
-        self.logger.info("Writing prefixes...")
-
-        count = 0
-
-        prefixes_new = dict()
-        prefixes_old_to_new = dict()
-
-        for prefix in prefixes.values():
-            new_prefix = self.obj_write(
-                prefix,
-                "prefixes",
-                {"q": str(prefix.prefix)},
-                self.prefix_get,
-                lambda prefix: {
-                    "description": prefix.description,
-                    "prefix": str(prefix.prefix),
-                    "is_pool": prefix.is_pool,
-                    # "vlan_id": prefix.vlan_id,
-                    # "vrf_id": prefix.vrf_id,
-                },
-            )
-
-            new_prefix_id = new_prefix.id_get()
-            prefixes_new[new_prefix_id] = new_prefix
-            prefixes_old_to_new[prefix.id_get()] = new_prefix
-
-            count += 1
-
-        self.logger.info("Wrote {} prefixes.".format(count))
-
-        return (prefixes_new, prefixes_old_to_new)
 
 
     def vlans_write(self, vlans):
@@ -527,20 +414,18 @@ class NetBox(BaseBackend):
 
         for vlan in vlans.values():
             new_vlan = self.obj_write(
-                vlan,
                 "vlans",
                 {"vid": vlan.vid},
-                self.vlan_get,
-                lambda vlan: {
+                {
                     "name": vlan.name,
                     "description": vlan.description,
                     "vid": vlan.vid,
                 },
+                self.vlan_get,
             )
 
-            new_vlan_id = new_vlan.id_get()
-            vlans_new[new_vlan_id] = new_vlan
-            vlans_old_to_new[vlan.id_get()] = new_vlan
+            vlans_new[new_vlan.id_get()] = new_vlan
+            vlans_old_to_new[vlan.id_get()] = new_vlan.id_get()
 
             count += 1
 
@@ -549,19 +434,93 @@ class NetBox(BaseBackend):
         return (vlans_new, vlans_old_to_new)
 
 
+    def prefixes_write(self,
+                       prefixes,
+                       vlans_new, vlans_old_to_new,
+                       vrfs_new, vrfs_old_to_new):
+        '''
+        '''
+
+        self.logger.info("Writing prefixes...")
+
+        count = 0
+
+        prefixes_new = dict()
+        prefixes_old_to_new = dict()
+
+        for prefix in prefixes.values():
+            new_prefix = self.obj_write(
+                "prefixes",
+                {"q": str(prefix.prefix)},
+                {
+                    "description": prefix.description,
+                    "prefix": str(prefix.prefix),
+                    "is_pool": prefix.is_pool,
+                    "vlan": vlans_old_to_new[prefix.vlan_id] if prefix.vlan_id else None,
+                    "vrf": vrfs_old_to_new[prefix.vrf_id] if prefix.vrf_id else None,
+                },
+                self.prefix_get,
+            )
+
+            prefixes_new[new_prefix.id_get()] = new_prefix
+            prefixes_old_to_new[prefix.id_get()] = new_prefix.id_get()
+
+            count += 1
+
+        self.logger.info("Wrote {} prefixes.".format(count))
+
+        return (prefixes_new, prefixes_old_to_new)
+
+
+    def ip_addresses_write(self,
+                           ip_addresses,
+                           vrfs_new, vrfs_old_to_new):
+        '''
+        '''
+
+        self.logger.info("Writing IP addresses...")
+
+        count = 0
+
+        ip_addresses_new = dict()
+        ip_addresses_old_to_new = dict()
+
+        for ip_address in ip_addresses.values():
+            new_ip_address = self.obj_write(
+                "ip-addresses",
+                {"q": str(ip_address.address)},
+                {
+                    "description": ip_address.description,
+                    "address": str(ip_address.address),
+                    "custom_fields": ip_address.custom_fields,
+                    "vrf": vrfs_old_to_new[ip_address.vrf_id] if ip_address.vrf_id else None,
+                },
+                self.ip_address_get,
+            )
+
+            ip_addresses_new[new_ip_address.id_get()] = new_ip_address
+            ip_addresses_old_to_new[ip_address.id_get()] = new_ip_address.id_get()
+
+            count += 1
+
+        self.logger.info("Wrote {} IP addresses.".format(count))
+
+        return (ip_addresses_new, ip_addresses_old_to_new)
+
+
     #
     ##
     #
 
 
-    def value_get(self, data, key, subkey=None):
+    def object_id_get(self, data, key):
         '''
         '''
 
-        if subkey:
-            return data[key][subkey] if key in data and data[key] is not None else None
+        if isinstance(data[key], int):
+            return data[key]
         else:
-            return data[key] if key in data else None
+            return data[key]["id"] if key in data and data[key] is not None else None
 
 
     def ip_address_get(self, data):
@@ -572,8 +531,8 @@ class NetBox(BaseBackend):
             data["id"], # ip_address_id
             data["address"].split("/")[0], # address
             description=data["description"],
-            custom_fields=self.value_get(data, "custom_fields"),
-            vrf_id=self.value_get(data, "vrf", "id"),
+            custom_fields=data["custom_fields"] if "custom_fields" in data else None,
+            vrf_id=self.object_id_get(data, "vrf"),
         )
 
 
@@ -586,8 +545,8 @@ class NetBox(BaseBackend):
             data["prefix"], # prefix
             is_pool=data["is_pool"],
             description=data["description"],
-            vlan_id=self.value_get(data, "vlan", "id"),
-            vrf_id=self.value_get(data, "vrf", "id"),
+            vlan_id=self.object_id_get(data, "vlan"),
+            vrf_id=self.object_id_get(data, "vrf"),
         )
 
 
