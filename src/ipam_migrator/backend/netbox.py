@@ -82,11 +82,11 @@ class NetBox(BaseBackend):
     '''
 
 
-    def __init__(self, name, logger, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify):
+    def __init__(self, name, dry_run, logger, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify):
         '''
         '''
 
-        super().__init__(name, logger)
+        super().__init__(name, dry_run, logger)
 
         # Configuration fields.
         self.api_endpoint = api_endpoint
@@ -214,6 +214,9 @@ class NetBox(BaseBackend):
         if not response.text:
             raise APIReadError(response.status_code, "(empty response)")
 
+        self.logger.debug("api_write: {}".format(response.status_code))
+        self.logger.debug("api_write: {}".format(response.text))
+
         obj = response.json()
 
         if response.status_code == 200: # OK
@@ -242,6 +245,7 @@ class NetBox(BaseBackend):
         '''
         '''
 
+        self.logger.debug("calling POST with data {}".format(data))
         return self.api_write(requests.post, *args, data=data)
 
 
@@ -384,6 +388,8 @@ class NetBox(BaseBackend):
             )
         else:
             new_obj_data = self.api_post("ipam", obj_type, data=obj_data)
+        self.logger.debug(obj_data)
+        self.logger.debug(new_obj_data)
         new_obj = obj_get_func(new_obj_data)
 
         if current_obj:

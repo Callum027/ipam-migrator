@@ -42,6 +42,8 @@ from ipam_migrator.exception import AuthMethodUnsupportedError
 
 class Section(Object):
     '''
+    Section database object type. Only used internally in the PhpIPAM
+    backend for reading data from a phpIPAM API endpoint.
     '''
 
 
@@ -97,11 +99,11 @@ class PhpIPAM(BaseBackend):
     '''
 
 
-    def __init__(self, logger, name, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify):
+    def __init__(self, logger, dry_run, name, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify):
         '''
         '''
 
-        super().__init__(logger, name)
+        super().__init__(logger, dry_run, name)
 
         # Configuration fields.
         self.api_endpoint = api_endpoint
@@ -341,7 +343,7 @@ class PhpIPAM(BaseBackend):
                         continue
 
                     prefixes[i] = self.prefix_get(data)
-                  　　self.logger.debug("found {}".format(prefixes[i])) 
+                    self.logger.debug("found {}".format(prefixes[i]))
 
             except APIReadError as err:
                 if err.api_message == "No subnets found":
@@ -403,7 +405,7 @@ class PhpIPAM(BaseBackend):
 
         else:
             self.logger.info(
-                "NOTE: 'vlans' controller root 'GET' method not supported, "
+                "NOTE: 'vlans' controller root 'GET' method not supported by API endpoint, "
                 "using iterative path (consider upgrading to phpIPAM 1.3+)",
             )
 

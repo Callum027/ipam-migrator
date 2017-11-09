@@ -76,6 +76,12 @@ def main():
         help="use LEVEL as the logging level parameter",
     )
 
+    argparser.add_argument(
+        "-dr", "--dry-run",
+        action="store_true",
+        help="dry run, do not write any information",
+    )
+
     arg_input_ssl_verify = argparser.add_mutually_exclusive_group(required=False)
     arg_input_ssl_verify.add_argument(
         "-iasv", "--input-api-ssl-verify",
@@ -127,6 +133,8 @@ def main():
     # Start main routine, with exception capture for logging purposes.
     try:
         #
+        dry_run = args["dry_run"]
+
         input_api_data = api_data_read(logger, args, "input")
         input_api_endpoint = input_api_data[0]
         input_api_type = input_api_data[1]
@@ -163,7 +171,7 @@ def main():
 
         # Connect to the input API endpoint, and read its database.
         input_backend = backend_create(
-            logger, "input",
+            logger, dry_run, "input",
             input_api_endpoint, input_api_type,
             input_api_auth_method, input_api_auth_data,
             input_api_ssl_verify,
@@ -174,7 +182,7 @@ def main():
         # and write the input database to it.
         if use_output:
             output_backend = backend_create(
-                logger, "output",
+                logger, dry_run, "output",
                 output_api_endpoint, output_api_type,
                 output_api_auth_method, output_api_auth_data,
                 output_api_ssl_verify,
@@ -234,7 +242,7 @@ def api_data_check(logger,
             raise AuthDataNotFoundError(name, api_type, "password")
 
 
-def backend_create(logger,
+def backend_create(logger, dry_run,
                    name,
                    api_endpoint, api_type,
                    api_auth_method, api_auth_data,
@@ -243,8 +251,8 @@ def backend_create(logger,
     '''
 
     if api_type == "phpipam":
-        return PhpIPAM(logger, name, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify)
+        return PhpIPAM(logger, dry_run, name, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify)
     elif api_type == "netbox":
-        return NetBox(logger, name, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify)
+        return NetBox(logger, dry_run, name, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify)
     else:
         raise RuntimeError("unknown {} database backend type '{}'".format(name, api_type))
