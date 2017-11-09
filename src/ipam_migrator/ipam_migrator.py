@@ -205,6 +205,7 @@ def main():
 
 def api_data_read(logger, args, name):
     '''
+    Read the API data for the given target name.
     '''
 
     api_data_list = args["{}_api_data".format(name)].split(",")
@@ -227,6 +228,7 @@ def api_data_check(logger,
                    api_auth_method, api_auth_data,
                    api_ssl_verify):
     '''
+    Check the validity of the given API data.
     '''
 
     if api_auth_method == "key":
@@ -248,6 +250,7 @@ def backend_create(logger, dry_run,
                    api_auth_method, api_auth_data,
                    api_ssl_verify):
     '''
+    Read an API backend for the given target name.
     '''
 
     if api_type == "phpipam":
