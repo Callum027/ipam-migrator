@@ -201,21 +201,44 @@ class NetBox(BaseBackend):
         self.api_authenticate()
 
         function = args[0] if callable(args[0]) else requests.post
+        self.logger.debug("function = {}".format(function))
 
         command = "/".join((str(a) for a in (args[1:] if callable(args[0]) else args)))
+        self.logger.debug("command = {}".format(command))
 
-        response = function(
+        self.logger.debug("uri = {}".format("{}/{}/".format(self.api_endpoint, command)))
+        self.logger.debug("data = {}".format(data))
+
+
+        request = requests.Request(
+            "POST",
             "{}/{}/".format(self.api_endpoint, command),
             auth=HTTPTokenAuth(self.token),
-            data=data,
-            verify=self.api_ssl_verify,
+            json=json.dumps(data),
         )
+        pr = request.prepare()
+
+        self.logger.debug("pr = {}".format(pr))
+        self.logger.debug("pr.url = {}".format(pr.url))
+        self.logger.debug("pr.headers = {}".format(pr.headers))
+        self.logger.debug("pr.body = {}".format(pr.body))
+
+        with requests.Session() as session:
+            response = session.send(pr, verify=self.api_ssl_verify)
+
+        #response = function(
+        #    "{}/{}/".format(self.api_endpoint, command),
+        #    auth=HTTPTokenAuth(self.token),
+        #    json=json.dumps(data),
+        #    verify=self.api_ssl_verify,
+        #)
 
         if not response.text:
             raise APIReadError(response.status_code, "(empty response)")
 
-        self.logger.debug("api_write: {}".format(response.status_code))
-        self.logger.debug("api_write: {}".format(response.text))
+        self.logger.debug("response.status_code = {}".format(response.status_code))
+        self.logger.debug("response.headers = {}".format(response.headers))
+        self.logger.debug("response.text = {}".format(response.text))
 
         obj = response.json()
 
@@ -335,6 +358,9 @@ class NetBox(BaseBackend):
             vlans_new = {}
             vlans_old_to_new = {}
 
+        # TODO: remove
+        return
+
         if database.vrfs:
             vrfs_old = database.vrfs
             vrfs_new, vrfs_old_to_new = self.vrfs_write(vrfs_old)
@@ -419,6 +445,9 @@ class NetBox(BaseBackend):
         vlans_old_to_new = dict()
 
         for vlan in vlans.values():
+            # TODO: remove
+            if vlan.vid != 52:
+                continue
             new_vlan = self.obj_write(
                 "vlans",
                 {"vid": vlan.vid},
