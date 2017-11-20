@@ -32,6 +32,7 @@ class VRF(Object):
     '''
 
 
+    # pylint: disable=too-many-arguments
     def __init__(self,
                  vrf_id,
                  route_distinguisher,
@@ -49,18 +50,19 @@ class VRF(Object):
 
     def __str__(self):
         '''
+        String representation of a VRF.
         '''
 
         if self.name:
             return "VRF {} with name '{}'".format(self.id_get(), self.name)
         if self.description:
             return "VRF {} with description '{}'".format(self.id_get(), self.description)
-        else:
-            return "VRF {}".format(self.id_get())
+        return "VRF {}".format(self.id_get())
 
 
     def as_dict(self):
         '''
+        Dictionary representation of a VRF.
         '''
 
         return {

@@ -34,6 +34,7 @@ class BaseBackend(abc.ABC):
 
     def __init__(self, logger, dry_run, name):
         '''
+        Database backend constructor.
         '''
 
         self.logger = logger
@@ -43,14 +44,12 @@ class BaseBackend(abc.ABC):
 
     @abc.abstractmethod
     def database_read(self,
-                      read_roles=True,
                       read_ip_addresses=True,
                       read_prefixes=True,
-                      read_aggregates=True,
                       read_vlans=True,
-                      read_vlan_groups=True,
                       read_vrfs=True):
         '''
+        Read a Database object from this backend.
         '''
 
         pass
@@ -59,6 +58,7 @@ class BaseBackend(abc.ABC):
     @abc.abstractmethod
     def database_write(self, database):
         '''
+        Write a Database object to this backend.
         '''
 
         pass

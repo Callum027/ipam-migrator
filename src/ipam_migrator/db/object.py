@@ -23,9 +23,6 @@ Database object base class.
 '''
 
 
-import json
-
-
 class Object(object):
     '''
     Database object base class.
@@ -44,6 +41,7 @@ class Object(object):
 
     def id_get(self):
         '''
+        Get Object ID.
         '''
 
         return self.object_id
@@ -51,6 +49,7 @@ class Object(object):
 
     def name_get(self):
         '''
+        Get Object name.
         '''
 
         return self.name
@@ -58,6 +57,7 @@ class Object(object):
 
     def description_get(self):
         '''
+        Get Object discription.
         '''
 
         return self.description
@@ -65,6 +65,7 @@ class Object(object):
 
     def as_dict(self):
         '''
+        Get dictionary representation of this Object.
         '''
 
         raise NotImplementedError()

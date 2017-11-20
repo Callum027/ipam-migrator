@@ -47,6 +47,7 @@ class Section(Object):
     '''
 
 
+    # pylint: disable=too-many-arguments
     def __init__(self,
                  section_id,
                  name, description,
@@ -71,6 +72,7 @@ class Section(Object):
 
     def __str__(self):
         '''
+        String representation of the Section object.
         '''
 
         return "section {}".format(self.name)
@@ -78,6 +80,7 @@ class Section(Object):
 
     def as_dict(self):
         '''
+        Dictionary representation of the Section object.
         '''
 
         return {
@@ -96,11 +99,20 @@ class Section(Object):
 
 class PhpIPAM(BaseBackend):
     '''
+    phpIPAM API backend.
     '''
 
 
-    def __init__(self, logger, dry_run, name, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify):
+    # pylint: disable=too-many-public-methods
+
+
+    # pylint: disable=too-many-arguments
+    def __init__(self,
+                 logger, dry_run, name,
+                 api_endpoint, api_auth_method,
+                 api_auth_data, api_ssl_verify):
         '''
+        phpIPAM API backend constructor.
         '''
 
         super().__init__(logger, dry_run, name)
@@ -150,8 +162,7 @@ class PhpIPAM(BaseBackend):
 
     def api_authenticate(self):
         '''
-        https://phpipam.net/api/api_documentation/
-        2.1 Authentication
+        Authenticate with the API backend.
         '''
 
         if self.token and not self.token_expires:
@@ -191,6 +202,7 @@ class PhpIPAM(BaseBackend):
 
     def api_read(self, *args, data=None):
         '''
+        Read an object from the API backend.
         '''
 
         self.api_authenticate()
@@ -217,6 +229,8 @@ class PhpIPAM(BaseBackend):
 
     def api_controller_methods(self, *args):
         '''
+        Read controller methods from the API backend.
+        See the comments for usage details.
         '''
 
         self.api_authenticate()
@@ -256,6 +270,14 @@ class PhpIPAM(BaseBackend):
         return command_methods
 
 
+    def api_write(self, *args, data=None):
+        '''
+        Write an object to the API backend.
+        '''
+
+        raise NotImplementedError()
+
+
     #
     ##
     #
@@ -267,6 +289,7 @@ class PhpIPAM(BaseBackend):
                       read_vlans=True,
                       read_vrfs=True):
         '''
+        Read a Database object from the API backend.
         '''
 
         # Read sections, needed for getting prefixes and IP addresses.
@@ -298,8 +321,7 @@ class PhpIPAM(BaseBackend):
 
     def sections_read(self):
         '''
-        https://phpipam.net/api/api_documentation/
-        3.1 Sections controller
+        Read a dictionary of Section objects from the API backend.
         '''
 
         sections = {}
@@ -319,8 +341,8 @@ class PhpIPAM(BaseBackend):
 
     def prefixes_read_from_sections(self, sections):
         '''
-        https://phpipam.net/api/api_documentation/
-        3.2 Subnets controller
+        Read a dictionary of Prefix objects from the API backend,
+        using previously read Sections.
         '''
 
         prefixes = {}
@@ -358,8 +380,8 @@ class PhpIPAM(BaseBackend):
 
     def ip_addresses_read_from_prefixes(self, prefixes):
         '''
-        https://phpipam.net/api/api_documentation/
-        3.4 Addresses controller
+        Read a dictionary of IPAddress objects from the API backend,
+        using previously read Prefixes.
         '''
 
         ip_addresses = {}
@@ -386,8 +408,7 @@ class PhpIPAM(BaseBackend):
 
     def vlans_read(self):
         '''
-        https://phpipam.net/api/api_documentation/
-        3.5 VLAN controller
+        Read a dictionary of VLAN objects from the API backend.
         '''
 
         vlans = {}
@@ -426,13 +447,10 @@ class PhpIPAM(BaseBackend):
 
     def vrfs_read(self):
         '''
-        Not implemented.
-
-        https://phpipam.net/api/api_documentation/
-        3.7 VRF controller
+        Read a dictionary of VRF objects from the API backend,
         '''
 
-        return dict()
+        raise NotImplementedError()
 
 
     #
@@ -442,6 +460,7 @@ class PhpIPAM(BaseBackend):
 
     def database_write(self, database):
         '''
+        Write a Database object to the API backend.
         '''
 
         raise NotImplementedError()
@@ -449,6 +468,7 @@ class PhpIPAM(BaseBackend):
 
     def sections_write(self):
         '''
+        Write a dictionary of Section objects to the API backend.
         '''
 
         raise NotImplementedError()
@@ -456,6 +476,7 @@ class PhpIPAM(BaseBackend):
 
     def ip_addresses_write(self):
         '''
+        Write a dictionary of IPAddress objects to the API backend.
         '''
 
         raise NotImplementedError()
@@ -463,6 +484,7 @@ class PhpIPAM(BaseBackend):
 
     def prefixes_write(self):
         '''
+        Write a dictionary of Prefix objects to the API backend.
         '''
 
         raise NotImplementedError()
@@ -470,6 +492,7 @@ class PhpIPAM(BaseBackend):
 
     def vlans_write(self):
         '''
+        Write a dictionary of VLAN objects to the API backend.
         '''
 
         raise NotImplementedError()
@@ -477,6 +500,7 @@ class PhpIPAM(BaseBackend):
 
     def vrfs_write(self):
         '''
+        Write a dictionary of VRF objects to the API backend.
         '''
 
         raise NotImplementedError()
@@ -487,8 +511,10 @@ class PhpIPAM(BaseBackend):
     #
 
 
-    def section_get(self, data):
+    @staticmethod
+    def section_get(data):
         '''
+        Get a Section object from the given data dictionary.
         '''
 
         return Section(
@@ -509,8 +535,10 @@ class PhpIPAM(BaseBackend):
         )
 
 
-    def vlan_get(self, data):
+    @staticmethod
+    def vlan_get(data):
         '''
+        Get a VLAN object from the given data dictionary.
         '''
 
         return VLAN(
@@ -522,8 +550,10 @@ class PhpIPAM(BaseBackend):
         )
 
 
-    def prefix_get(self, data):
+    @staticmethod
+    def prefix_get(data):
         '''
+        Get a Prefix object from the given data dictionary.
         '''
 
         return Prefix(
@@ -558,8 +588,10 @@ class PhpIPAM(BaseBackend):
         )
 
 
-    def ip_address_get(self, data):
+    @staticmethod
+    def ip_address_get(data):
         '''
+        Get an IPAddress object from the given data dictionary.
         '''
 
         return IPAddress(
@@ -584,8 +616,10 @@ class PhpIPAM(BaseBackend):
         )
 
 
-    def vrf_get(self, data):
+    @staticmethod
+    def vrf_get(data):
         '''
+        Get a VRF object from the given data dictionary.
         '''
 
         raise NotImplementedError()

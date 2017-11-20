@@ -39,7 +39,9 @@ def main():
     Main routine.
     '''
 
-    # Parse
+    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-statements
+
     argparser = argparse.ArgumentParser(
         description="Transfer IPAM information between two (possibly differing) systems",
     )
@@ -191,10 +193,11 @@ def main():
 
         # If not, write the input database to the logger.
         else:
-            logger.info("Input database:\n{}".format(input_database))
+            logger.info("Input database:\n%s", input_database)
 
-    except Exception as e:
-        logger.exception(e)
+    # pylint: disable=broad-except
+    except Exception as exc:
+        logger.exception(exc)
 
     # Main routine shutdown.
     logger.debug("stopping logger")
@@ -207,6 +210,8 @@ def api_data_read(logger, args, name):
     '''
     Read the API data for the given target name.
     '''
+
+    # pylint: disable=unused-argument
 
     api_data_list = args["{}_api_data".format(name)].split(",")
     api_endpoint = api_data_list[0]
@@ -222,8 +227,8 @@ def api_data_read(logger, args, name):
     return (api_endpoint, api_type, api_auth_method, api_auth_data, api_ssl_verify)
 
 
-def api_data_check(logger,
-                   name,
+# pylint: disable=too-many-arguments
+def api_data_check(logger, name,
                    api_endpoint, api_type,
                    api_auth_method, api_auth_data,
                    api_ssl_verify):
@@ -231,19 +236,33 @@ def api_data_check(logger,
     Check the validity of the given API data.
     '''
 
+    logger.debug("%s backend API data", name)
+    logger.debug("- API endpoint: %s", api_endpoint)
+    logger.debug("- type: %s", api_type)
+    logger.debug("- auth method: %s", api_auth_method)
+
     if api_auth_method == "key":
         if not api_auth_data:
             raise AuthDataNotFoundError(name, api_type, "API key")
+        logger.debug("- API key: <redacted, length %i>", len(api_auth_data[0]))
+
     elif api_auth_method == "token":
         if not api_auth_data:
             raise AuthDataNotFoundError(name, api_type, "authentication token")
+        logger.debug("- authentication token: <redacted, length %i>", len(api_auth_data[0]))
+
     elif api_auth_method == "login":
         if not api_auth_data:
             raise AuthDataNotFoundError(name, api_type, "user name and password")
         if len(api_auth_data) < 2:
             raise AuthDataNotFoundError(name, api_type, "password")
+        logger.debug("- username: %s", api_auth_data[0])
+        logger.debug("- password: <redacted, length %i>", len(api_auth_data[1]))
+
+    logger.debug("- SSL verify: %s", str(api_ssl_verify).lower())
 
 
+# pylint: disable=too-many-arguments
 def backend_create(logger, dry_run,
                    name,
                    api_endpoint, api_type,
@@ -254,8 +273,14 @@ def backend_create(logger, dry_run,
     '''
 
     if api_type == "phpipam":
-        return PhpIPAM(logger, dry_run, name, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify)
+        return PhpIPAM(logger, dry_run, name,
+                       api_endpoint, api_auth_method,
+                       api_auth_data, api_ssl_verify,
+                      )
     elif api_type == "netbox":
-        return NetBox(logger, dry_run, name, api_endpoint, api_auth_method, api_auth_data, api_ssl_verify)
+        return NetBox(logger, dry_run, name,
+                      api_endpoint, api_auth_method,
+                      api_auth_data, api_ssl_verify,
+                     )
     else:
         raise RuntimeError("unknown {} database backend type '{}'".format(name, api_type))

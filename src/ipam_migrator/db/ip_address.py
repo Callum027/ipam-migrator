@@ -34,6 +34,7 @@ class IPAddress(Object):
     '''
 
 
+    # pylint: disable=too-many-arguments
     def __init__(self,
                  address_id,
                  address,
@@ -58,16 +59,17 @@ class IPAddress(Object):
 
     def __str__(self):
         '''
+        String representation of an IPAddress.
         '''
 
         if self.description:
             return "IP address {} with description '{}'".format(self.address, self.description)
-        else:
-            return "IP address {}".format(self.address)
+        return "IP address {}".format(self.address)
 
 
     def as_dict(self):
         '''
+        Dictionary representation of an IPAddress.
         '''
 
         return {

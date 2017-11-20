@@ -47,18 +47,19 @@ class VLAN(Object):
 
     def __str__(self):
         '''
+        String representation of a VLAN.
         '''
 
         if self.name:
             return "VLAN {} with name '{}'".format(self.vid, self.name)
         elif self.description:
             return "VLAN {} with description '{}'".format(self.vid, self.description)
-        else:
-            return "VLAN {}".format(self.vid)
+        return "VLAN {}".format(self.vid)
 
 
     def as_dict(self):
         '''
+        Dictionary representation of a VLAN.
         '''
 
         return {

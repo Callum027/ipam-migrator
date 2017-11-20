@@ -34,6 +34,10 @@ class Database(object):
     '''
 
 
+    # pylint: disable=too-few-public-methods
+
+
+    # pylint: disable=too-many-arguments
     def __init__(self,
                  roles,
                  ip_addresses, prefixes, aggregates,
@@ -50,7 +54,7 @@ class Database(object):
         self.aggregates = tuple(copy.deepcopy(aggregates))
 
         self.vlans = tuple(copy.deepcopy(vlans))
-        self.vlan_groups = tuple(copy.deepcopy(vlans))
+        self.vlan_groups = tuple(copy.deepcopy(vlan_groups))
 
         self.vrfs = tuple(copy.deepcopy(vrfs))
 

@@ -34,6 +34,7 @@ class Prefix(Object):
     '''
 
 
+    # pylint: disable=too-many-arguments
     def __init__(self,
                  prefix_id,
                  prefix,
@@ -57,16 +58,17 @@ class Prefix(Object):
 
     def __str__(self):
         '''
+        String representation of a Prefix.
         '''
 
         if self.description:
             return "prefix {} with description '{}'".format(self.prefix, self.description)
-        else:
-            return "prefix {}".format(self.prefix)
+        return "prefix {}".format(self.prefix)
 
 
     def as_dict(self):
         '''
+        Dictionary representation of a Prefix.
         '''
 
         return {
@@ -77,9 +79,6 @@ class Prefix(Object):
             "family": self.family,
 
             "is_pool": self.is_pool,
-
-            "role_id": self.role_id,
-            "status_id": self.status_id,
 
             "vlan_id": self.vlan_id,
             "vrf_id": self.vrf_id,
