@@ -43,7 +43,7 @@ Once ipam-migrator is installed and configured, it can be executed by simply run
 The command `ipam-migrator --help` documents the optional arguments which can be used.
 
 ```
-usage: ipam-migrator [-h] [-l FILE] [-ll LEVEL] [-dr] [-iasv | -naisv]
+usage: ipam-migrator [-h] [-l FILE] [-ll LEVEL] [-iasv | -naisv]
                      [-oasv | -noasv]
                      INPUT-API-ENDPOINT,TYPE,AUTH-METHOD,KEY|TOKEN|USER,PASSWORD
                      [OUTPUT-API-ENDPOINT,TYPE,AUTH-METHOD,KEY|TOKEN|USER,PASSWORD]
@@ -63,7 +63,6 @@ optional arguments:
   -l FILE, --log FILE   log output to FILE
   -ll LEVEL, --log-level LEVEL
                         use LEVEL as the logging level parameter
-  -dr, --dry-run        dry run, do not write any information
   -iasv, --input-api-ssl-verify
                         verify the input API endpoint SSL certificate
                         (default)

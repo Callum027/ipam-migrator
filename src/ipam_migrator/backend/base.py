@@ -32,13 +32,12 @@ class BaseBackend(abc.ABC):
     '''
 
 
-    def __init__(self, logger, dry_run, name):
+    def __init__(self, logger, name):
         '''
         Database backend constructor.
         '''
 
         self.logger = logger
-        self.dry_run = dry_run
         self.name = name
 
 

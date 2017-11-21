@@ -92,14 +92,14 @@ class NetBox(BaseBackend):
 
     # pylint: disable=too-many-arguments
     def __init__(self,
-                 logger, dry_run, name,
+                 logger, name,
                  api_endpoint, api_auth_method,
                  api_auth_data, api_ssl_verify):
         '''
         NetBox API backend constructor.
         '''
 
-        super().__init__(name, dry_run, logger)
+        super().__init__(name, logger)
 
         # Configuration fields.
         self.api_endpoint = api_endpoint
