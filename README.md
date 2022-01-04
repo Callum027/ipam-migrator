@@ -1,5 +1,7 @@
-ipam-migrator
+ipam-migrator working again
 =============
+
+This is a fork of Callum027/ipam-migrator with two bugfixes to make it working again in current (v3) Netbox environments. I think the original repo was abandoned at some point.
 
 IPAM data migration tool for between phpIPAM and NetBox. Currently supports reading from phpIPAM and writing to NetBox.
 
