@@ -99,7 +99,7 @@ class NetBox(BaseBackend):
         NetBox API backend constructor.
         '''
 
-        super().__init__(name, logger)
+        super().__init__(logger, name)
 
         # Configuration fields.
         self.api_endpoint = api_endpoint
