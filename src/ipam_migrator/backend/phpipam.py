@@ -418,8 +418,8 @@ class PhpIPAM(BaseBackend):
         # GET command for the VLANs controller is not supported in phpIPAM
         # versions older than 1.3. It's much faster, though, so use it if
         # it's available.
-        if "GET" in self.api_controller_methods("vlans")[("vlans",)]:
-            for data in self.api_read("vlans"):
+        if "GET" in self.api_controller_methods("vlan")[("vlan",)]:
+            for data in self.api_read("vlan"):
                 i = data["id"]
                 vlans[i] = self.vlan_get(data)
                 self.logger.debug("found {}".format(vlans[i]))
@@ -432,7 +432,7 @@ class PhpIPAM(BaseBackend):
 
             for i in range(1, 4095):
                 try:
-                    vlans[i] = self.vlan_get(self.api_read("vlans", i))
+                    vlans[i] = self.vlan_get(self.api_read("vlan", i))
                     self.logger.debug("found {}".format(vlans[i]))
                 except APIReadError as err:
                     if err.api_message == "Vlan not found":
