@@ -1,10 +1,8 @@
 # ipam-migrator is no longer maintained # 
 
-This repository is no longer maintained. The migrator was working in January 2022 with the then-current versions of phpIPAM and Netbox, and was capable of migrating prefixes, addresses and VLANs (not VRFs), but if you are looking at this any time later than Jan/2022, your mileage may vary. 
+This repository is no longer maintained. The migrator was fixed in January 2022 to work with the then-current versions of phpIPAM and Netbox, and is capable of migrating prefixes, addresses and VLANs (not VRFs). However, if you are looking at this any time later than Jan/2022, your mileage may vary. 
 
 If you want to use the migrator, your best bet is to fork it, fix it up, commit any changes to your fork and run off that.
-
-This is a fork of Callum027/ipam-migrator with two bugfixes to make it working again in current (v3) Netbox environments. I think the original repo was abandoned at some point.
 
 IPAM data migration tool for between phpIPAM and NetBox. Currently supports reading from phpIPAM and writing to NetBox.
 
