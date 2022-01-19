@@ -1,3 +1,8 @@
+# ipam-migrator is no longer maintained # 
+
+This repository is no longer maintained. the migrator was working in January 2022 with the then-current versions of phpIPAM and Netbox, and was capable of migrating prefixes, addresses and VLANs (not VRFs), but if you are looking at this any time later than Jan/2022, your mileage may vary. 
+If you want to use the migrator, your best bet is to fork it, fix it up, commit any changes to your fork and run off that.
+
 ipam-migrator working again
 =============
 
