@@ -99,7 +99,7 @@ class NetBox(BaseBackend):
         NetBox API backend constructor.
         '''
 
-        super().__init__(name, logger)
+        super().__init__(logger, name)
 
         # Configuration fields.
         self.api_endpoint = api_endpoint
@@ -292,7 +292,7 @@ class NetBox(BaseBackend):
                       read_ip_addresses=True,
                       read_prefixes=True,
                       read_vlans=True,
-                      read_vrfs=True):
+                      read_vrfs=False):
         '''
         Read a Database object from the API backend.
         '''
