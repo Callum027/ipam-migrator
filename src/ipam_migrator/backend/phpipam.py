@@ -247,7 +247,6 @@ class PhpIPAM(BaseBackend):
             raise APIOptionsError(response.status_code, "(empty response)")
 
         obj = response.json()
-        self.logger.info("obj: {}".format(obj));
         if not obj["success"]:
             raise APIOptionsError(obj["code"], obj["message"])
 
@@ -266,7 +265,6 @@ class PhpIPAM(BaseBackend):
             command = tuple(href.strip("/").split("/"))[2:]
             methods = href_methods["methods"]
             command_methods[command] = (met["method"] for met in methods)
-        self.logger.info("command_methods: {}".format(command_methods));
         return command_methods
 
 
