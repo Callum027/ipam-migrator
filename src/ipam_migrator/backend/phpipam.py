@@ -247,7 +247,7 @@ class PhpIPAM(BaseBackend):
             raise APIOptionsError(response.status_code, "(empty response)")
 
         obj = response.json()
-
+        self.logger.info("obj: {}".format(obj));
         if not obj["success"]:
             raise APIOptionsError(obj["code"], obj["message"])
 
@@ -266,7 +266,7 @@ class PhpIPAM(BaseBackend):
             command = tuple(href.strip("/").split("/"))[2:]
             methods = href_methods["methods"]
             command_methods[command] = (met["method"] for met in methods)
-
+        self.logger.info("command_methods: {}".format(command_methods));
         return command_methods
 
 
@@ -287,7 +287,7 @@ class PhpIPAM(BaseBackend):
                       read_ip_addresses=True,
                       read_prefixes=True,
                       read_vlans=True,
-                      read_vrfs=True):
+                      read_vrfs=False):
         '''
         Read a Database object from the API backend.
         '''
@@ -418,8 +418,8 @@ class PhpIPAM(BaseBackend):
         # GET command for the VLANs controller is not supported in phpIPAM
         # versions older than 1.3. It's much faster, though, so use it if
         # it's available.
-        if "GET" in self.api_controller_methods("vlan")[("vlan",)]:
-            for data in self.api_read("vlan"):
+        if "OPTIONS" in self.api_controller_methods("vlans")[("vlans",)]:
+            for data in self.api_read("vlans"):
                 i = data["id"]
                 vlans[i] = self.vlan_get(data)
                 self.logger.debug("found {}".format(vlans[i]))
